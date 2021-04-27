@@ -1,0 +1,188 @@
+-- Gui to Lua
+-- Version: 3.2
+
+-- Instances:
+
+local ScreenGui = Instance.new("ScreenGui")
+local GUI = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local BlackTheme = Instance.new("TextButton")
+local WhiteTheme = Instance.new("TextButton")
+local PrintSwitch = Instance.new("TextButton")
+local GUI2 = Instance.new("Frame")
+local Title_2 = Instance.new("TextLabel")
+local Print = Instance.new("TextButton")
+local TextBox = Instance.new("TextBox")
+
+--Properties:
+
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+GUI.Name = "GUI"
+GUI.Parent = ScreenGui
+GUI.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+GUI.BorderSizePixel = 0
+GUI.Position = UDim2.new(0.575393856, 0, 0.336609334, 0)
+GUI.Size = UDim2.new(0, 278, 0, 265)
+GUI.ZIndex = 10
+GUI.Active = true
+GUI.Draggable = true
+
+Title.Name = "Title"
+Title.Parent = GUI
+Title.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+Title.BorderSizePixel = 0
+Title.Size = UDim2.new(0, 278, 0, 28)
+Title.Font = Enum.Font.RobotoMono
+Title.Text = "Theme Change Test"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 25.000
+Title.TextWrapped = true
+
+BlackTheme.Name = "BlackTheme"
+BlackTheme.Parent = GUI
+BlackTheme.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+BlackTheme.BackgroundTransparency = 0.300
+BlackTheme.BorderSizePixel = 0
+BlackTheme.Position = UDim2.new(0.140287772, 0, 0.495119929, 0)
+BlackTheme.Size = UDim2.new(0, 200, 0, 49)
+BlackTheme.Font = Enum.Font.SourceSansBold
+BlackTheme.Text = "Black"
+BlackTheme.TextColor3 = Color3.fromRGB(255, 255, 255)
+BlackTheme.TextSize = 30.000
+BlackTheme.MouseButton1Down:connect(function()
+	warn("Theme changed to black!")
+	BlackTheme.Parent.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+	BlackTheme.Parent.BlackTheme.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+	BlackTheme.Parent.Title.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+	BlackTheme.Parent.WhiteTheme.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+	BlackTheme.Parent.PrintSwitch.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+	BlackTheme.Parent.PrintSwitch.BackgroundTransparency = 1
+	-- Changing GUI #2
+	BlackTheme.Parent.Parent.GUI2.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+	BlackTheme.Parent.Parent.GUI2.Print.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+	BlackTheme.Parent.Parent.GUI2.TextBox.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+	BlackTheme.Parent.Parent.GUI2.TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	BlackTheme.Parent.Parent.GUI2.Title.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+end)
+
+WhiteTheme.Name = "WhiteTheme"
+WhiteTheme.Parent = GUI
+WhiteTheme.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+WhiteTheme.BackgroundTransparency = 0.300
+WhiteTheme.BorderSizePixel = 0
+WhiteTheme.Position = UDim2.new(0.140287772, 0, 0.220176145, 0)
+WhiteTheme.Size = UDim2.new(0, 200, 0, 49)
+WhiteTheme.Font = Enum.Font.SourceSansBold
+WhiteTheme.Text = "White"
+WhiteTheme.TextColor3 = Color3.fromRGB(255, 255, 255)
+WhiteTheme.TextSize = 30.000
+WhiteTheme.MouseButton1Down:connect(function()
+	warn("Theme changed to white!")
+	WhiteTheme.Parent.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	WhiteTheme.Parent.BlackTheme.BackgroundColor3 = Color3.fromRGB(136, 136, 136)
+	WhiteTheme.Parent.Title.BackgroundColor3 = Color3.fromRGB(136, 136, 136)
+	WhiteTheme.Parent.WhiteTheme.BackgroundColor3 = Color3.fromRGB(136, 136, 136)
+	WhiteTheme.Parent.PrintSwitch.BackgroundColor3 = Color3.fromRGB(135, 136, 136)
+	WhiteTheme.Parent.PrintSwitch.BackgroundTransparency = 0
+	-- Changing GUI #2
+	WhiteTheme.Parent.Parent.GUI2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	WhiteTheme.Parent.Parent.GUI2.Print.BackgroundColor3 = Color3.fromRGB(136, 136, 136)
+	WhiteTheme.Parent.Parent.GUI2.Print.TextColor3 = Color3.fromRGB(255, 255, 255)
+	WhiteTheme.Parent.Parent.GUI2.Print.BackgroundTransparency = 0
+	WhiteTheme.Parent.Parent.GUI2.TextBox.BackgroundColor3 = Color3.fromRGB(136, 136, 136)
+	WhiteTheme.Parent.Parent.GUI2.TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	WhiteTheme.Parent.Parent.GUI2.Title.BackgroundColor3 = Color3.fromRGB(135, 136, 136)
+end)
+
+PrintSwitch.Name = "PrintSwitch"
+PrintSwitch.Parent = GUI
+PrintSwitch.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+PrintSwitch.BackgroundTransparency = 1.000
+PrintSwitch.BorderSizePixel = 0
+PrintSwitch.Position = UDim2.new(0.83453238, 0, 0.841509461, 0)
+PrintSwitch.Size = UDim2.new(0, 46, 0, 42)
+PrintSwitch.Font = Enum.Font.SourceSansBold
+PrintSwitch.Text = ">"
+PrintSwitch.TextColor3 = Color3.fromRGB(255, 255, 255)
+PrintSwitch.TextSize = 50.000
+PrintSwitch.TextWrapped = true
+
+GUI2.Name = "GUI2"
+GUI2.Parent = ScreenGui
+GUI2.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+GUI2.BorderSizePixel = 0
+GUI2.Position = UDim2.new(0.75, 2, 0.337000012, 0)
+GUI2.Size = UDim2.new(0, 237, 0, 265)
+GUI2.Visible = false
+GUI2.Active = true
+GUI2.Draggable = true
+
+Title_2.Name = "Title"
+Title_2.Parent = GUI2
+Title_2.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+Title_2.BorderSizePixel = 0
+Title_2.Size = UDim2.new(0, 237, 0, 28)
+Title_2.Font = Enum.Font.RobotoMono
+Title_2.Text = "Print Test"
+Title_2.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title_2.TextSize = 25.000
+Title_2.TextWrapped = true
+
+Print.Name = "Print"
+Print.Parent = GUI2
+Print.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+Print.BackgroundTransparency = 0.300
+Print.BorderSizePixel = 0
+Print.Position = UDim2.new(0.0759493634, 0, 0.494339645, 0)
+Print.Size = UDim2.new(0, 200, 0, 49)
+Print.Font = Enum.Font.SourceSansBold
+Print.Text = "Print Text"
+Print.TextColor3 = Color3.fromRGB(255, 255, 255)
+Print.TextSize = 30.000
+Print.MouseButton1Down:connect(function()
+	print(TextBox.Text)
+end)
+
+TextBox.Parent = GUI2
+TextBox.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+TextBox.BorderColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.BorderSizePixel = 0
+TextBox.Position = UDim2.new(0.160337552, 0, 0.218867928, 0)
+TextBox.Size = UDim2.new(0, 160, 0, 50)
+TextBox.Font = Enum.Font.SourceSansBold
+TextBox.Text = "hello world"
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.TextSize = 25.000
+TextBox.TextWrapped = true
+
+-- Scripts:
+
+local function CVUP_fake_script() -- GUI.Destroy 
+	local script = Instance.new('LocalScript', GUI)
+
+	local UserInputService = game:GetService("UserInputService")
+	local gui = script.Parent.Parent
+	
+	local function closeGui(input, gameProcessed)
+		if (gameProcessed) then return; end
+		if (input.KeyCode == Enum.KeyCode.RightAlt) then
+			gui:Destroy()
+		end
+	end
+	
+	UserInputService.InputBegan:Connect(closeGui)
+end
+coroutine.wrap(CVUP_fake_script)()
+local function HDUJE_fake_script() -- PrintSwitch.LocalScript 
+	local script = Instance.new('LocalScript', PrintSwitch)
+
+	local print = script.Parent.Parent.Parent.GUI2
+	local switch = script.Parent
+	
+	switch.MouseButton1Down:connect(function()
+		print.Visible = not print.Visible
+	end)
+end
+coroutine.wrap(HDUJE_fake_script)()
