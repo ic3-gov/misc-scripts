@@ -1,0 +1,17 @@
+-- made by tommy.#0010 lol
+
+local Player = game.Players.LocalPlayer
+local Character = Player.Character
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local Animation = Instance.new("Animation")
+Animation.AnimationId = "rbxassetid://6735860832"
+
+local Animation2 = Instance.new("Animation")
+Animation2.AnimationId = "rbxassetid://6735836281"
+
+local Track = Humanoid:LoadAnimation(Animation)
+local Track2 = Humanoid:LoadAnimation(Animation2)
+Track:Play()
+wait(0.4)
+Track2:Play()
