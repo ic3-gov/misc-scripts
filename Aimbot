@@ -226,7 +226,7 @@ game:GetService('RunService').RenderStepped:connect(function()
 			if AIM then
 				CC.CoordinateFrame = CFrame.new(CC.CoordinateFrame.p, AIM.CFrame.p)
 			end
-			GUI_TARGET.Text = 'AIMBOT : '.. TARGET.Name:sub(1, 5)
+			GUI_TARGET.Text = 'AIMBOT : '.. TARGET.Name:sub(1, 3)
 		else
 			GUI_TARGET.Text = 'AIMBOT : OFF'
 		end
