@@ -1,0 +1,6 @@
+while true do
+    wait(1)
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(22, 4, 98)
+    wait(65)
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-1, 4, 148)
+end
