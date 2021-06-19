@@ -1,0 +1,51 @@
+--[[
+
+MASS CREATE CLONES
+
+--]]
+
+getgenv().cloner = true;
+
+while wait(0.10) do
+	if getgenv().cloner == true then
+		game:GetService("ReplicatedStorage").GameFunctions.MakeClone:FireServer()
+	end
+end
+
+-----------------------------------------------------------------------------------------------
+
+--[[
+
+INFINITE ENERGY
+
+--]]
+
+getgenv().energy = true;
+
+local args = {
+    [1] = "Energy",
+    [2] = 2
+}
+
+
+while wait(0.10) do
+	if getgenv().energy == true then
+		game:GetService("ReplicatedStorage").GameFunctions.StatChange:FireServer(unpack(args))
+	end
+end
+
+-----------------------------------------------------------------------------------------------
+
+--[[
+
+AUTOFARM TOKENS
+
+--]]
+
+getgenv().autofarm = true;
+
+while wait(0.5) do
+	if getgenv().autofarm == true then
+		game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-92, 60, 143)
+	end
+end
