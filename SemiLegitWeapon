@@ -1,0 +1,9 @@
+for i,v in pairs(game.Players.LocalPlayer.Backpack:GetDescendants()) do
+   if v:FindFirstChild("GunConfig") then
+       local c =  require(v.GunConfig)
+       c.MaxAmmo = 150
+       c.HitDamage = 40
+       c.TeamKill = true
+       
+            end
+        end
