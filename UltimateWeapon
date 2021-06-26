@@ -1,0 +1,15 @@
+local funny = math.huge
+
+for i,v in pairs(game.Players:GetDescendants()) do
+   if v:FindFirstChild("GunConfig") then
+       local c =  require(v.GunConfig)
+       c.MaxAmmo = funny
+       c.HitDamage = 99999
+       c.TeamKill = true
+       c.BulletColor = BrickColor.new("Really red")
+       c.FireRate = 0.0001
+       c.BulletsPerShot = 1
+       c.BulletSpread = 0
+	   
+			end
+		end
