@@ -1,5 +1,5 @@
 local args = {
-    [1] = "Crown Victoria"
+    [1] = "Police Durango"
 }
 
 while true do
