@@ -3,6 +3,6 @@ local args = {
 }
 
 while true do
-    wait(0.1)
+    wait(0.01)
     game:GetService("ReplicatedStorage").spawn_veh:FireServer(unpack(args))
 end
