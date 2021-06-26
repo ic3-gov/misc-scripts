@@ -1,0 +1,8 @@
+local args = {
+    [1] = "Crown Victoria"
+}
+
+while true do
+    wait(0.1)
+    game:GetService("ReplicatedStorage").spawn_veh:FireServer(unpack(args))
+end
