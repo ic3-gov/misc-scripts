@@ -1,0 +1,16 @@
+local Collected = game:GetService("Players").LocalPlayer.CashCollected
+local Root = game:GetService('Players').LocalPlayer.Character.HumanoidRootPart
+local TS = game:GetService('TweenService')
+local Event = game:GetService("ReplicatedStorage").BuyGun
+
+TS:Create(game:GetService('Players').LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(2, Enum.EasingStyle.Linear), {CFrame = CFrame.new(-1.10268831, 4.34455299, 147.681488, 0.996868372, -3.5947390808, -0.0790785402, 2.9289607208, 1, -8.5351928208, 0.0790785402, 8.2768465908, 0.996868372)}):Play()
+wait(2)
+TS:Create(game:GetService('Players').LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(2, Enum.EasingStyle.Linear), {CFrame = CFrame.new(13.2020798, 4.37491989, 97.8556213)}):Play()
+Collected:GetPropertyChangedSignal('Value'):Connect(function()
+   if Collected.Value == 100 then
+       TS:Create(game:GetService('Players').LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(1, Enum.EasingStyle.Linear), {CFrame = CFrame.new(-1.10268831, 4.34455299, 147.681488)}):Play()
+       wait(1.5)
+       TS:Create(game:GetService('Players').LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(1, Enum.EasingStyle.Linear), {CFrame = CFrame.new(67.5601959, 73.5735016, -8.01393318)}):Play()
+       Event:FireServer("G36")
+   end
+end)
