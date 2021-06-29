@@ -1,0 +1,12 @@
+local me = false
+if me then
+for i,plr in pairs(game:GetService("Players"):GetPlayers())do
+game:GetService("ReplicatedStorage").ArrestSystem:InvokeServer(plr)
+end
+else
+for i,plr in pairs(game:GetService("Players"):GetPlayers())do
+if plr ~= game:GetService("Players").LocalPlayer then
+game:GetService("ReplicatedStorage").ArrestSystem:InvokeServer(plr)
+end
+end
+end
