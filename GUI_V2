@@ -1,0 +1,277 @@
+-- tommy was here
+-- tommy.#0010
+-- fuck off skid lmfao
+-- ezezezez
+
+local tommy = Instance.new("ScreenGui")
+local Toggle = Instance.new("TextButton")
+local FullGUI = Instance.new("Frame")
+local Header = Instance.new("TextLabel")
+local Options = Instance.new("Frame")
+local UltimateWeapon = Instance.new("TextButton")
+local SemiLegitWeapon = Instance.new("TextButton")
+local GetTokens = Instance.new("TextButton")
+local LagServer = Instance.new("TextButton")
+local IYFE = Instance.new("TextButton")
+local HideName = Instance.new("TextButton")
+local ArrestAll = Instance.new("TextButton")
+local InfoDown = Instance.new("TextButton")
+local Info = Instance.new("Frame")
+local PlayerCount = Instance.new("TextLabel")
+local InfoUp = Instance.new("TextButton")
+local players = game:GetService("Players"):GetPlayers()
+
+-- gui
+
+tommy.Name = "tommy"
+tommy.Parent = game.CoreGui
+tommy.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Toggle.Name = "Toggle"
+Toggle.Parent = tommy
+Toggle.BackgroundColor3 = Color3.fromRGB(21, 21, 21)
+Toggle.BorderColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.Position = UDim2.new(0.00766871171, 0, 0.387730092, 0)
+Toggle.Size = UDim2.new(0, 66, 0, 20)
+Toggle.Font = Enum.Font.SourceSans
+Toggle.Text = "TOGGLE"
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.TextSize = 14.000
+Toggle.MouseButton1Down:Connect(function()
+	Toggle.Parent.FullGUI.Visible = not Toggle.Parent.FullGUI.Visible
+end)
+
+FullGUI.Name = "FullGUI"
+FullGUI.Parent = tommy
+FullGUI.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FullGUI.BorderSizePixel = 0
+FullGUI.Position = UDim2.new(0.643793225, 0, 0.490099132, 0)
+FullGUI.Size = UDim2.new(0, 385, 0, 285)
+FullGUI.Visible = false
+
+Header.Name = "Header"
+Header.Parent = FullGUI
+Header.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+Header.BorderSizePixel = 0
+Header.Position = UDim2.new(0, 0, -0.177051499, 0)
+Header.Size = UDim2.new(0, 385, 0, 50)
+Header.Font = Enum.Font.SciFi
+Header.Text = "tommy.#0010"
+Header.TextColor3 = Color3.fromRGB(255, 255, 255)
+Header.TextSize = 34.000
+
+Options.Name = "Options"
+Options.Parent = FullGUI
+Options.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Options.BackgroundTransparency = 1.000
+Options.Position = UDim2.new(0.012987013, 0, 0.0241935477, 0)
+Options.Size = UDim2.new(0, 375, 0, 236)
+
+UltimateWeapon.Name = "UltimateWeapon"
+UltimateWeapon.Parent = Options
+UltimateWeapon.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+UltimateWeapon.BorderColor3 = Color3.fromRGB(255, 255, 255)
+UltimateWeapon.Position = UDim2.new(0.109333336, 0, 0.0508474559, 0)
+UltimateWeapon.Size = UDim2.new(0, 138, 0, 50)
+UltimateWeapon.Font = Enum.Font.SourceSans
+UltimateWeapon.Text = "Ultimate Weapon"
+UltimateWeapon.TextColor3 = Color3.fromRGB(255, 255, 255)
+UltimateWeapon.TextSize = 25.000
+UltimateWeapon.TextWrapped = true
+UltimateWeapon.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/UltimateWeapon'),true))()
+end)
+
+SemiLegitWeapon.Name = "SemiLegitWeapon"
+SemiLegitWeapon.Parent = Options
+SemiLegitWeapon.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+SemiLegitWeapon.BorderColor3 = Color3.fromRGB(255, 255, 255)
+SemiLegitWeapon.Position = UDim2.new(0.522666633, 0, 0.0508474559, 0)
+SemiLegitWeapon.Size = UDim2.new(0, 138, 0, 50)
+SemiLegitWeapon.Font = Enum.Font.SourceSans
+SemiLegitWeapon.Text = "Semi - Legit Weapon"
+SemiLegitWeapon.TextColor3 = Color3.fromRGB(255, 255, 255)
+SemiLegitWeapon.TextSize = 25.000
+SemiLegitWeapon.TextWrapped = true
+SemiLegitWeapon.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/SemiLegitWeapon'),true))()
+end)
+
+GetTokens.Name = "GetTokens"
+GetTokens.Parent = Options
+GetTokens.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+GetTokens.BorderColor3 = Color3.fromRGB(255, 255, 255)
+GetTokens.Position = UDim2.new(0.522666633, 0, 0.347457647, 0)
+GetTokens.Size = UDim2.new(0, 138, 0, 50)
+GetTokens.Font = Enum.Font.SourceSans
+GetTokens.Text = "Buy G36"
+GetTokens.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetTokens.TextSize = 25.000
+GetTokens.TextWrapped = true
+GetTokens.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/BuyG36'),true))()
+end)
+
+LagServer.Name = "LagServer"
+LagServer.Parent = Options
+LagServer.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+LagServer.BorderColor3 = Color3.fromRGB(255, 255, 255)
+LagServer.Position = UDim2.new(0.109333336, 0, 0.347457647, 0)
+LagServer.Size = UDim2.new(0, 138, 0, 50)
+LagServer.Font = Enum.Font.SourceSans
+LagServer.Text = "Lag Server"
+LagServer.TextColor3 = Color3.fromRGB(255, 255, 255)
+LagServer.TextSize = 25.000
+LagServer.TextWrapped = true
+LagServer.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/LagServer'),true))()
+end)
+
+IYFE.Name = "IYFE"
+IYFE.Parent = Options
+IYFE.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+IYFE.BorderColor3 = Color3.fromRGB(255, 255, 255)
+IYFE.Position = UDim2.new(0.109333336, 0, 0.648305118, 0)
+IYFE.Size = UDim2.new(0, 138, 0, 50)
+IYFE.Font = Enum.Font.SourceSans
+IYFE.Text = "Admin Cmds"
+IYFE.TextColor3 = Color3.fromRGB(255, 255, 255)
+IYFE.TextSize = 25.000
+IYFE.TextWrapped = true
+IYFE.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'),true))()
+end)
+
+HideName.Name = "HideName"
+HideName.Parent = Options
+HideName.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+HideName.BorderColor3 = Color3.fromRGB(255, 255, 255)
+HideName.Position = UDim2.new(0.522666633, 0, 0.648305118, 0)
+HideName.Size = UDim2.new(0, 138, 0, 50)
+HideName.Font = Enum.Font.SourceSans
+HideName.Text = "Hide Name"
+HideName.TextColor3 = Color3.fromRGB(255, 255, 255)
+HideName.TextSize = 25.000
+HideName.TextWrapped = true
+HideName.MouseButton1Down:Connect(function()
+	game.Players.LocalPlayer.Character.Head.BillboardGui:Destroy()
+end)
+
+ArrestAll.Name = "ArrestAll"
+ArrestAll.Parent = Options
+ArrestAll.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
+ArrestAll.BorderColor3 = Color3.fromRGB(255, 255, 255)
+ArrestAll.Position = UDim2.new(0.522333324, 0, 0.944000006, 0)
+ArrestAll.Size = UDim2.new(0, 138, 0, 50)
+ArrestAll.Font = Enum.Font.SourceSans
+ArrestAll.Text = "Arrest All"
+ArrestAll.TextColor3 = Color3.fromRGB(255, 255, 255)
+ArrestAll.TextSize = 25.000
+ArrestAll.TextWrapped = true
+ArrestAll.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/ArrestAll'),true))()
+end)
+
+InfoDown.Name = "InfoDown"
+InfoDown.Parent = FullGUI
+InfoDown.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+InfoDown.BackgroundTransparency = 1.000
+InfoDown.BorderColor3 = Color3.fromRGB(255, 255, 255)
+InfoDown.BorderSizePixel = 0
+InfoDown.Position = UDim2.new(0.0155844158, 0, 0.871491253, 0)
+InfoDown.Size = UDim2.new(0, 25, 0, 31)
+InfoDown.Font = Enum.Font.SourceSans
+InfoDown.Text = "\\/"
+InfoDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfoDown.TextSize = 25.000
+
+Info.Name = "Info"
+Info.Parent = FullGUI
+Info.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Info.BorderSizePixel = 0
+Info.Position = UDim2.new(0, 0, 0.899561405, 0)
+Info.Size = UDim2.new(0, 385, 0, 60)
+Info.Visible = false
+
+PlayerCount.Name = "PlayerCount"
+PlayerCount.Parent = Info
+PlayerCount.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+PlayerCount.BackgroundTransparency = 1.000
+PlayerCount.Position = UDim2.new(0.293506503, 0, 0.450000018, 0)
+PlayerCount.Size = UDim2.new(0, 159, 0, 33)
+PlayerCount.Font = Enum.Font.SourceSansSemibold
+PlayerCount.Text = "Player Count: "
+PlayerCount.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayerCount.TextSize = 25.000
+while true do
+	wait(0.01)
+	PlayerCount.Text = "Player Count: "..#players
+end
+
+InfoUp.Name = "InfoUp"
+InfoUp.Parent = Info
+InfoUp.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+InfoUp.BackgroundTransparency = 1.000
+InfoUp.BorderColor3 = Color3.fromRGB(255, 255, 255)
+InfoUp.BorderSizePixel = 0
+InfoUp.Position = UDim2.new(0.467532486, 0, 0.125, 0)
+InfoUp.Size = UDim2.new(0, 25, 0, 31)
+InfoUp.Font = Enum.Font.SourceSans
+InfoUp.Text = "^"
+InfoUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfoUp.TextSize = 41.000
+
+-- Scripts:
+
+local function SSBGZ_fake_script() -- InfoDown.LocalScript 
+	local script = Instance.new('LocalScript', InfoDown)
+
+	local downarrow = script.Parent
+	
+	downarrow.MouseButton1Down:Connect(function()
+		downarrow.Parent.Info.Visible = true
+		downarrow.Visible = false
+		downarrow.Parent.Info:TweenPosition(UDim2.new(0, 0, 1, 0))
+	end)
+end
+coroutine.wrap(SSBGZ_fake_script)()
+local function FLQHR_fake_script() -- PlayerCount.LocalScript 
+	local script = Instance.new('LocalScript', PlayerCount)
+
+	print("xd")
+	
+end
+coroutine.wrap(FLQHR_fake_script)()
+local function GDAL_fake_script() -- InfoUp.LocalScript 
+	local script = Instance.new('LocalScript', InfoUp)
+
+	local uparrow = script.Parent
+	local downarrow = script.Parent.Parent.Parent.InfoDown
+	
+	uparrow.MouseButton1Down:Connect(function()
+		uparrow.Parent:TweenPosition(UDim2.new(0, 0, 0.875, 0))
+		wait(0.9)
+		uparrow.Parent.Visible = false
+		downarrow.Visible = true
+		
+	end)
+end
+coroutine.wrap(GDAL_fake_script)()
+local function HIRUNB_fake_script() -- tommy.Kill 
+	local script = Instance.new('LocalScript', tommy)
+
+	local UserInputService = game:GetService("UserInputService")
+	local gui = script.Parent
+	
+	print("Right Alt to destroy GUI.")
+	
+	local function closeGui(input, gameProcessed)
+		if (gameProcessed) then return; end
+		if (input.KeyCode == Enum.KeyCode.RightAlt) then
+			gui:Destroy()
+		end
+	end
+	
+	UserInputService.InputBegan:Connect(closeGui)
+end
+coroutine.wrap(HIRUNB_fake_script)()
