@@ -1,235 +1,146 @@
---[[
+-- Gui to Lua
+-- Version: 3.2
 
-						████████╗░█████╗░███╗░░░███╗███╗░░░███╗██╗░░░██╗░░░░░░██╗░██╗░░█████╗░░█████╗░░░███╗░░░█████╗░
-						╚══██╔══╝██╔══██╗████╗░████║████╗░████║╚██╗░██╔╝░░░██████████╗██╔══██╗██╔══██╗░████║░░██╔══██╗
-						░░░██║░░░██║░░██║██╔████╔██║██╔████╔██║░╚████╔╝░░░░╚═██╔═██╔═╝██║░░██║██║░░██║██╔██║░░██║░░██║
-						░░░██║░░░██║░░██║██║╚██╔╝██║██║╚██╔╝██║░░╚██╔╝░░░░░██████████╗██║░░██║██║░░██║╚═╝██║░░██║░░██║
-						░░░██║░░░╚█████╔╝██║░╚═╝░██║██║░╚═╝░██║░░░██║░░░██╗╚██╔═██╔══╝╚█████╔╝╚█████╔╝███████╗╚█████╔╝
-						░░░╚═╝░░░░╚════╝░╚═╝░░░░░╚═╝╚═╝░░░░░╚═╝░░░╚═╝░░░╚═╝░╚═╝░╚═╝░░░░╚════╝░░╚════╝░╚══════╝░╚════╝░
+-- Instances:
 
-
---]]
-
-local blox = Instance.new("ScreenGui")
-local GUI = Instance.new("Frame")
+local BC = Instance.new("ScreenGui")
 local Main = Instance.new("Frame")
-local Sidebar = Instance.new("Frame")
+local Ultimate = Instance.new("TextButton")
+local Semi = Instance.new("TextButton")
+local Arrest = Instance.new("TextButton")
+local Lag = Instance.new("TextButton")
+local HideName = Instance.new("TextButton")
+local G36 = Instance.new("TextButton")
 local TextLabel = Instance.new("TextLabel")
-local Scripts = Instance.new("Frame")
-local Remove = Instance.new("TextButton")
-local rounded = Instance.new("ImageLabel")
-local TextLabel_2 = Instance.new("TextLabel")
-local Money = Instance.new("TextButton")
-local rounded_2 = Instance.new("ImageLabel")
-local TextLabel_3 = Instance.new("TextLabel")
-local IYFE = Instance.new("TextButton")
-local rounded_3 = Instance.new("ImageLabel")
-local TextLabel_4 = Instance.new("TextLabel")
-local Toggle = Instance.new("TextButton")
 
--- GUI Properties
+--Properties:
 
-blox.Name = "blox"
-blox.Parent = game.CoreGui
-
-GUI.Name = "GUI"
-GUI.Parent = blox
-GUI.BackgroundColor3 = Color3.fromRGB(27, 27, 27)
-GUI.BorderSizePixel = 0
-GUI.Position = UDim2.new(0.649999976, 0, 0.560000002, 0)
-GUI.Size = UDim2.new(0, 334, 0, 322)
+BC.Name = "BC"
+BC.Parent = game.CoreGui
+BC.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 Main.Name = "Main"
-Main.Parent = GUI
-Main.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+Main.Parent = BC
+Main.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
 Main.BorderSizePixel = 0
-Main.Position = UDim2.new(0, 0, 0.0434782617, 0)
-Main.Size = UDim2.new(0, 334, 0, 322)
+Main.Position = UDim2.new(0.75230062, 0, 0.57914114, 0)
+Main.Size = UDim2.new(0, 229, 0, 243)
 
-Sidebar.Name = "Sidebar"
-Sidebar.Parent = Main
-Sidebar.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
-Sidebar.BorderSizePixel = 0
-Sidebar.Size = UDim2.new(0, 61, 0, 322)
+Ultimate.Name = "Ultimate"
+Ultimate.Parent = Main
+Ultimate.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+Ultimate.BorderSizePixel = 0
+Ultimate.Position = UDim2.new(0.109170303, 0, 0.156378597, 0)
+Ultimate.Size = UDim2.new(0, 77, 0, 26)
+Ultimate.Font = Enum.Font.SourceSans
+Ultimate.Text = "Ultimate Weapon"
+Ultimate.TextColor3 = Color3.fromRGB(255, 255, 255)
+Ultimate.TextScaled = true
+Ultimate.TextSize = 14.000
+Ultimate.TextWrapped = true
+Ultimate.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/UltimateWeapon'),true))()
+end)
 
-TextLabel.Parent = Sidebar
+Semi.Name = "Semi"
+Semi.Parent = Main
+Semi.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+Semi.BorderSizePixel = 0
+Semi.Position = UDim2.new(0.554585159, 0, 0.156378597, 0)
+Semi.Size = UDim2.new(0, 77, 0, 26)
+Semi.Font = Enum.Font.SourceSans
+Semi.Text = "Semi Legit"
+Semi.TextColor3 = Color3.fromRGB(255, 255, 255)
+Semi.TextSize = 14.000
+Semi.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/SemiLegitWeapon'),true))()
+end)
+
+Arrest.Name = "Arrest"
+Arrest.Parent = Main
+Arrest.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+Arrest.BorderSizePixel = 0
+Arrest.Position = UDim2.new(0.109170303, 0, 0.366255134, 0)
+Arrest.Size = UDim2.new(0, 77, 0, 26)
+Arrest.Font = Enum.Font.SourceSans
+Arrest.Text = "Arrest All"
+Arrest.TextColor3 = Color3.fromRGB(255, 255, 255)
+Arrest.TextSize = 14.000
+Arrest.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/ArrestAll'),true))()
+end)
+
+Lag.Name = "Lag"
+Lag.Parent = Main
+Lag.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+Lag.BorderSizePixel = 0
+Lag.Position = UDim2.new(0.554585159, 0, 0.366255134, 0)
+Lag.Size = UDim2.new(0, 77, 0, 26)
+Lag.Font = Enum.Font.SourceSans
+Lag.Text = "Lag Server"
+Lag.TextColor3 = Color3.fromRGB(255, 255, 255)
+Lag.TextSize = 14.000
+Lag.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/LagServer'),true))()
+end)
+
+HideName.Name = "HideName"
+HideName.Parent = Main
+HideName.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+HideName.BorderSizePixel = 0
+HideName.Position = UDim2.new(0.109170303, 0, 0.559670806, 0)
+HideName.Size = UDim2.new(0, 77, 0, 26)
+HideName.Font = Enum.Font.SourceSans
+HideName.Text = "Hide Name"
+HideName.TextColor3 = Color3.fromRGB(255, 255, 255)
+HideName.TextSize = 14.000
+HideName.MouseButton1Down:Connect(function()
+	game:GetService("Players").LocalPlayer.Character.Head.BillboardGui:Destroy()
+end)
+
+G36.Name = "G36"
+G36.Parent = Main
+G36.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+G36.BorderSizePixel = 0
+G36.Position = UDim2.new(0.554585159, 0, 0.559670806, 0)
+G36.Size = UDim2.new(0, 77, 0, 26)
+G36.Font = Enum.Font.SourceSans
+G36.Text = "Buy G36"
+G36.TextColor3 = Color3.fromRGB(255, 255, 255)
+G36.TextSize = 14.000
+G36.MouseButton1Down:Connect(function()
+	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/BuyG36'),true))()
+end)
+
+TextLabel.Parent = Main
 TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 TextLabel.BackgroundTransparency = 1.000
 TextLabel.BorderSizePixel = 0
-TextLabel.Position = UDim2.new(-2.14160657, 0, 0.413316786, 0)
-TextLabel.Rotation = -90.000
-TextLabel.Size = UDim2.new(0, 322, 0, 54)
-TextLabel.Font = Enum.Font.SourceSansBold
-TextLabel.Text = "tommy.#0010"
+TextLabel.Position = UDim2.new(0.0611353703, 0, 0, 0)
+TextLabel.Size = UDim2.new(0, 200, 0, 25)
+TextLabel.Font = Enum.Font.Ubuntu
+TextLabel.Text = "BLOX CHANNEL"
 TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel.TextScaled = true
-TextLabel.TextSize = 14.000
-TextLabel.TextWrapped = true
-
-Scripts.Name = "Scripts"
-Scripts.Parent = Main
-Scripts.BackgroundColor3 = Color3.fromRGB(27, 27, 27)
-Scripts.BackgroundTransparency = 1.000
-Scripts.Position = UDim2.new(0.203592807, 0, 0.0217391308, 0)
-Scripts.Size = UDim2.new(0, 260, 0, 308)
-
-Remove.Name = "Remove"
-Remove.Parent = Scripts
-Remove.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Remove.BackgroundTransparency = 1.000
-Remove.BorderSizePixel = 0
-Remove.Position = UDim2.new(0.108000003, 0, 0.0500000007, 0)
-Remove.Size = UDim2.new(0, 200, 0, 50)
-Remove.Font = Enum.Font.SourceSans
-Remove.Text = "Remove Nametag"
-Remove.TextColor3 = Color3.fromRGB(255, 255, 255)
-Remove.TextSize = 14.000
-Remove.MouseButton1Down:connect(function()
-	warn("Tag removed!")
-	wait(0.00001)
-	game:GetService("Workspace").controIller.Head.BillboardGui:Destroy() -- PUT YOUR USERNAME THERE
-end)
-
-rounded.Name = "rounded"
-rounded.Parent = Remove
-rounded.Active = true
-rounded.AnchorPoint = Vector2.new(0.5, 0.5)
-rounded.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-rounded.BackgroundTransparency = 1.000
-rounded.Position = UDim2.new(0.5, 0, 0.5, 0)
-rounded.Selectable = true
-rounded.Size = UDim2.new(1, 0, 1, 0)
-rounded.Image = "rbxassetid://3570695787"
-rounded.ImageColor3 = Color3.fromRGB(50, 50, 50)
-rounded.ScaleType = Enum.ScaleType.Slice
-rounded.SliceCenter = Rect.new(100, 100, 100, 100)
-rounded.SliceScale = 0.120
-
-TextLabel_2.Parent = Remove
-TextLabel_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel_2.BackgroundTransparency = 1.000
-TextLabel_2.Position = UDim2.new(0.474999994, 0, 0.400000006, 0)
-TextLabel_2.Size = UDim2.new(0, 10, 0, 10)
-TextLabel_2.Font = Enum.Font.SourceSans
-TextLabel_2.Text = "Remove Nametag"
-TextLabel_2.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel_2.TextSize = 21.000
-
-Money.Name = "Money"
-Money.Parent = Scripts
-Money.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Money.BackgroundTransparency = 1.000
-Money.BorderSizePixel = 0
-Money.Position = UDim2.new(0.108000003, 0, 0.25, 0)
-Money.Size = UDim2.new(0, 200, 0, 50)
-Money.Font = Enum.Font.SourceSans
-Money.Text = "money"
-Money.TextColor3 = Color3.fromRGB(255, 255, 255)
-Money.TextSize = 14.000
-Money.MouseButton1Down:connect(function()
-	warn("When you want to stop it, leave and rejoin.")
-	wait(0.000001)
-	loadstring(game:HttpGet(('https://raw.githubusercontent.com/Tommy-IL/misc-scripts/main/BloxChannelTokens'),true))()
-end)
-
-rounded_2.Name = "rounded"
-rounded_2.Parent = Money
-rounded_2.Active = true
-rounded_2.AnchorPoint = Vector2.new(0.5, 0.5)
-rounded_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-rounded_2.BackgroundTransparency = 1.000
-rounded_2.Position = UDim2.new(0.5, 0, 0.5, 0)
-rounded_2.Selectable = true
-rounded_2.Size = UDim2.new(1, 0, 1, 0)
-rounded_2.Image = "rbxassetid://3570695787"
-rounded_2.ImageColor3 = Color3.fromRGB(50, 50, 50)
-rounded_2.ScaleType = Enum.ScaleType.Slice
-rounded_2.SliceCenter = Rect.new(100, 100, 100, 100)
-rounded_2.SliceScale = 0.120
-
-TextLabel_3.Parent = Money
-TextLabel_3.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel_3.BackgroundTransparency = 1.000
-TextLabel_3.Position = UDim2.new(0.474999994, 0, 0.400000006, 0)
-TextLabel_3.Size = UDim2.new(0, 10, 0, 10)
-TextLabel_3.Font = Enum.Font.SourceSans
-TextLabel_3.Text = "Autofarm Tokens"
-TextLabel_3.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel_3.TextSize = 21.000
-
-IYFE.Name = "IYFE"
-IYFE.Parent = Scripts
-IYFE.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-IYFE.BackgroundTransparency = 1.000
-IYFE.BorderSizePixel = 0
-IYFE.Position = UDim2.new(0.108000003, 0, 0.449999988, 0)
-IYFE.Size = UDim2.new(0, 200, 0, 50)
-IYFE.Font = Enum.Font.SourceSans
-IYFE.Text = "iyfe"
-IYFE.TextColor3 = Color3.fromRGB(255, 255, 255)
-IYFE.TextSize = 14.000
-IYFE.MouseButton1Down:connect(function()
-	warn("Executed.")
-	wait(0.00001)
-	loadstring(game:HttpGet(('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'),true))()
-end)
-
-rounded_3.Name = "rounded"
-rounded_3.Parent = IYFE
-rounded_3.Active = true
-rounded_3.AnchorPoint = Vector2.new(0.5, 0.5)
-rounded_3.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-rounded_3.BackgroundTransparency = 1.000
-rounded_3.Position = UDim2.new(0.5, 0, 0.5, 0)
-rounded_3.Selectable = true
-rounded_3.Size = UDim2.new(1, 0, 1, 0)
-rounded_3.Image = "rbxassetid://3570695787"
-rounded_3.ImageColor3 = Color3.fromRGB(50, 50, 50)
-rounded_3.ScaleType = Enum.ScaleType.Slice
-rounded_3.SliceCenter = Rect.new(100, 100, 100, 100)
-rounded_3.SliceScale = 0.120
-
-TextLabel_4.Parent = IYFE
-TextLabel_4.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel_4.BackgroundTransparency = 1.000
-TextLabel_4.Position = UDim2.new(0.474999994, 0, 0.400000006, 0)
-TextLabel_4.Size = UDim2.new(0, 10, 0, 10)
-TextLabel_4.Font = Enum.Font.SourceSans
-TextLabel_4.Text = "Admin"
-TextLabel_4.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel_4.TextSize = 21.000
-
-Toggle.Name = "Toggle"
-Toggle.Parent = blox
-Toggle.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Toggle.BorderColor3 = Color3.fromRGB(255, 255, 255)
-Toggle.Position = UDim2.new(0.956948638, 0, 0.74570024, 0)
-Toggle.Size = UDim2.new(0, 54, 0, 28)
-Toggle.Font = Enum.Font.SourceSans
-Toggle.Text = "TOGGLE"
-Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-Toggle.TextSize = 15.000
-Toggle.MouseButton1Down:connect(function()
-	Toggle.Parent.GUI.Visible = not Toggle.Parent.GUI.Visible
-end)
+TextLabel.TextSize = 23.000
 
 -- Scripts:
 
-local function QNIIS_fake_script() -- blox.LocalScript 
-	local script = Instance.new('LocalScript', blox)
+local function XXHD_fake_script() -- Main.LocalScript 
+	local script = Instance.new('LocalScript', Main)
 
-	local UserInputService = game:GetService("UserInputService")
-	local gui = script.Parent
-	
-	print("Right alt to destroy gui.")
-	
-	local function closeGui(input, gameProcessed)
-		if (gameProcessed) then return; end
-		if (input.KeyCode == Enum.KeyCode.RightAlt) then
-			gui:Destroy()
+	print("Press 1 on your keypad to toggle the gui!")
+end
+coroutine.wrap(XXHD_fake_script)()
+local function YTRLRNG_fake_script() -- BC.LocalScript 
+	local script = Instance.new('LocalScript', BC)
+
+	function onKeyPress(inputObject, gameProcessedEvent)
+		if not gameProcessedEvent then
+			if inputObject.KeyCode == Enum.KeyCode.KeypadOne  then 
+			script.Parent.Main.Visible = not script.Parent.Main.Visible
+			end
 		end
 	end
-	
-	UserInputService.InputBegan:Connect(closeGui)
+	game:GetService("UserInputService").InputBegan:connect(onKeyPress)
 end
-coroutine.wrap(QNIIS_fake_script)()
+coroutine.wrap(YTRLRNG_fake_script)()
