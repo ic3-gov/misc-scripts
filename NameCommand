@@ -1,0 +1,6 @@
+game:GetService("Players").LocalPlayer.Chatted:connect(function(msg)
+
+if (string.lower(msg) == ":name") then
+game:GetService("Players").LocalPlayer.Character.Head.OverheadGui:Destroy()
+    end
+end)
