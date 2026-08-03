@@ -1,0 +1,1214 @@
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+pcall(function()
+    local oldGui = CoreGui:FindFirstChild("ClientAdmin")
+
+    if oldGui then
+        oldGui:Destroy()
+    end
+end)
+
+local ToggleKey = Enum.KeyCode.Semicolon
+local CommandBarOpen = false
+
+local COMMAND_BAR_WIDTH = 350
+local COMMAND_BAR_HEIGHT = 42
+local COMMAND_LIST_HEIGHT = 170
+local RIGHT_PADDING = 10
+
+local Commands = {}
+local CommandEntries = {}
+
+local FreecamEnabled = false
+local FreecamPosition = Vector3.zero
+local FreecamPitch = 0
+local FreecamYaw = 0
+
+local FreecamSpeed = 45
+local FreecamFastSpeed = 130
+local FreecamSensitivity = 0.0025
+
+local MovementKeys = {}
+
+local SavedCameraType
+local SavedCameraSubject
+local SavedCameraCFrame
+local SavedCameraFieldOfView
+local SavedMouseBehavior
+local SavedMouseIconEnabled
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ClientAdmin"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = CoreGui
+
+-- Custom notifications
+
+local NotificationContainer = Instance.new("Frame")
+NotificationContainer.Name = "Notifications"
+NotificationContainer.Parent = ScreenGui
+NotificationContainer.AnchorPoint = Vector2.new(0.5, 0)
+NotificationContainer.Position = UDim2.new(0.5, 0, 0, 12)
+NotificationContainer.Size = UDim2.fromOffset(360, 500)
+NotificationContainer.BackgroundTransparency = 1
+NotificationContainer.BorderSizePixel = 0
+NotificationContainer.ZIndex = 100
+
+local NotificationLayout = Instance.new("UIListLayout")
+NotificationLayout.Parent = NotificationContainer
+NotificationLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+NotificationLayout.SortOrder = Enum.SortOrder.LayoutOrder
+NotificationLayout.Padding = UDim.new(0, 8)
+
+local NotificationCount = 0
+
+local function sendNotification(titleText, descriptionText, duration)
+    duration = duration or 5
+    NotificationCount += 1
+
+    local Holder = Instance.new("Frame")
+    Holder.Name = "NotificationHolder"
+    Holder.Parent = NotificationContainer
+    Holder.Size = UDim2.fromOffset(340, 74)
+    Holder.BackgroundTransparency = 1
+    Holder.BorderSizePixel = 0
+    Holder.LayoutOrder = NotificationCount
+    Holder.ZIndex = 101
+
+    local Notification = Instance.new("Frame")
+    Notification.Name = "Notification"
+    Notification.Parent = Holder
+    Notification.AnchorPoint = Vector2.new(0.5, 0)
+    Notification.Position = UDim2.new(0.5, 0, 0, -100)
+    Notification.Size = UDim2.fromScale(1, 1)
+    Notification.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
+    Notification.BackgroundTransparency = 1
+    Notification.BorderSizePixel = 0
+    Notification.ClipsDescendants = true
+    Notification.ZIndex = 102
+
+    local NotificationCorner = Instance.new("UICorner")
+    NotificationCorner.CornerRadius = UDim.new(0, 9)
+    NotificationCorner.Parent = Notification
+
+    local NotificationStroke = Instance.new("UIStroke")
+    NotificationStroke.Parent = Notification
+    NotificationStroke.Color = Color3.fromRGB(62, 62, 70)
+    NotificationStroke.Thickness = 1
+    NotificationStroke.Transparency = 1
+
+    local IconBackground = Instance.new("Frame")
+    IconBackground.Name = "Icon"
+    IconBackground.Parent = Notification
+    IconBackground.AnchorPoint = Vector2.new(0, 0.5)
+    IconBackground.Position = UDim2.new(0, 14, 0.5, -1)
+    IconBackground.Size = UDim2.fromOffset(34, 34)
+    IconBackground.BackgroundColor3 = Color3.fromRGB(220, 55, 65)
+    IconBackground.BackgroundTransparency = 1
+    IconBackground.BorderSizePixel = 0
+    IconBackground.ZIndex = 104
+
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(1, 0)
+    IconCorner.Parent = IconBackground
+
+    local IconStroke = Instance.new("UIStroke")
+    IconStroke.Parent = IconBackground
+    IconStroke.Color = Color3.fromRGB(255, 110, 115)
+    IconStroke.Thickness = 1
+    IconStroke.Transparency = 0.25
+
+    local IconSymbol = Instance.new("TextLabel")
+    IconSymbol.Name = "Symbol"
+    IconSymbol.Parent = IconBackground
+    IconSymbol.Size = UDim2.fromScale(1, 1)
+    IconSymbol.BackgroundTransparency = 1
+    IconSymbol.Text = "!"
+    IconSymbol.TextColor3 = Color3.fromRGB(255, 255, 255)
+    IconSymbol.TextTransparency = 1
+    IconSymbol.Font = Enum.Font.GothamBold
+    IconSymbol.TextSize = 20
+    IconSymbol.ZIndex = 105
+
+    local Title = Instance.new("TextLabel")
+    Title.Name = "Title"
+    Title.Parent = Notification
+    Title.Position = UDim2.fromOffset(60, 9)
+    Title.Size = UDim2.new(1, -74, 0, 22)
+    Title.BackgroundTransparency = 1
+    Title.Text = tostring(titleText)
+    Title.TextColor3 = Color3.fromRGB(245, 245, 250)
+    Title.TextTransparency = 1
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.TextYAlignment = Enum.TextYAlignment.Center
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 14
+    Title.TextTruncate = Enum.TextTruncate.AtEnd
+    Title.ZIndex = 104
+
+    local Description = Instance.new("TextLabel")
+    Description.Name = "Description"
+    Description.Parent = Notification
+    Description.Position = UDim2.fromOffset(60, 31)
+    Description.Size = UDim2.new(1, -74, 0, 29)
+    Description.BackgroundTransparency = 1
+    Description.Text = tostring(descriptionText)
+    Description.TextColor3 = Color3.fromRGB(165, 165, 175)
+    Description.TextTransparency = 1
+    Description.TextXAlignment = Enum.TextXAlignment.Left
+    Description.TextYAlignment = Enum.TextYAlignment.Top
+    Description.Font = Enum.Font.Gotham
+    Description.TextSize = 12
+    Description.TextWrapped = true
+    Description.ZIndex = 104
+
+    local ProgressBackground = Instance.new("Frame")
+    ProgressBackground.Name = "ProgressBackground"
+    ProgressBackground.Parent = Notification
+    ProgressBackground.AnchorPoint = Vector2.new(0, 1)
+    ProgressBackground.Position = UDim2.new(0, 0, 1, 0)
+    ProgressBackground.Size = UDim2.new(1, 0, 0, 3)
+    ProgressBackground.BackgroundColor3 = Color3.fromRGB(42, 42, 48)
+    ProgressBackground.BackgroundTransparency = 1
+    ProgressBackground.BorderSizePixel = 0
+    ProgressBackground.ZIndex = 104
+
+    local ProgressBar = Instance.new("Frame")
+    ProgressBar.Name = "ProgressBar"
+    ProgressBar.Parent = ProgressBackground
+    ProgressBar.Size = UDim2.fromScale(1, 1)
+    ProgressBar.BackgroundColor3 = Color3.fromRGB(220, 55, 65)
+    ProgressBar.BackgroundTransparency = 1
+    ProgressBar.BorderSizePixel = 0
+    ProgressBar.ZIndex = 105
+
+    TweenService:Create(
+        Notification,
+        TweenInfo.new(
+            0.35,
+            Enum.EasingStyle.Quint,
+            Enum.EasingDirection.Out
+        ),
+        {
+            Position = UDim2.new(0.5, 0, 0, 0),
+            BackgroundTransparency = 0
+        }
+    ):Play()
+
+    TweenService:Create(
+        NotificationStroke,
+        TweenInfo.new(0.3),
+        {
+            Transparency = 0.15
+        }
+    ):Play()
+
+    TweenService:Create(
+        IconBackground,
+        TweenInfo.new(0.3),
+        {
+            BackgroundTransparency = 0
+        }
+    ):Play()
+
+    TweenService:Create(
+        IconSymbol,
+        TweenInfo.new(0.3),
+        {
+            TextTransparency = 0
+        }
+    ):Play()
+
+    TweenService:Create(
+        Title,
+        TweenInfo.new(0.3),
+        {
+            TextTransparency = 0
+        }
+    ):Play()
+
+    TweenService:Create(
+        Description,
+        TweenInfo.new(0.3),
+        {
+            TextTransparency = 0
+        }
+    ):Play()
+
+    TweenService:Create(
+        ProgressBackground,
+        TweenInfo.new(0.3),
+        {
+            BackgroundTransparency = 0
+        }
+    ):Play()
+
+    TweenService:Create(
+        ProgressBar,
+        TweenInfo.new(0.3),
+        {
+            BackgroundTransparency = 0
+        }
+    ):Play()
+
+    task.delay(0.35, function()
+        if not ProgressBar.Parent then
+            return
+        end
+
+        TweenService:Create(
+            ProgressBar,
+            TweenInfo.new(
+                duration,
+                Enum.EasingStyle.Linear,
+                Enum.EasingDirection.Out
+            ),
+            {
+                Size = UDim2.new(0, 0, 1, 0)
+            }
+        ):Play()
+    end)
+
+    task.delay(duration + 0.35, function()
+        if not Notification.Parent then
+            return
+        end
+
+        TweenService:Create(
+            NotificationStroke,
+            TweenInfo.new(0.2),
+            {
+                Transparency = 1
+            }
+        ):Play()
+
+        TweenService:Create(
+            IconBackground,
+            TweenInfo.new(0.2),
+            {
+                BackgroundTransparency = 1
+            }
+        ):Play()
+
+        TweenService:Create(
+            IconSymbol,
+            TweenInfo.new(0.2),
+            {
+                TextTransparency = 1
+            }
+        ):Play()
+
+        TweenService:Create(
+            Title,
+            TweenInfo.new(0.2),
+            {
+                TextTransparency = 1
+            }
+        ):Play()
+
+        TweenService:Create(
+            Description,
+            TweenInfo.new(0.2),
+            {
+                TextTransparency = 1
+            }
+        ):Play()
+
+        TweenService:Create(
+            ProgressBackground,
+            TweenInfo.new(0.2),
+            {
+                BackgroundTransparency = 1
+            }
+        ):Play()
+
+        TweenService:Create(
+            ProgressBar,
+            TweenInfo.new(0.2),
+            {
+                BackgroundTransparency = 1
+            }
+        ):Play()
+
+        local exitTween = TweenService:Create(
+            Notification,
+            TweenInfo.new(
+                0.3,
+                Enum.EasingStyle.Quint,
+                Enum.EasingDirection.In
+            ),
+            {
+                Position = UDim2.new(0.5, 0, 0, -100),
+                BackgroundTransparency = 1
+            }
+        )
+
+        exitTween:Play()
+        exitTween.Completed:Wait()
+
+        Holder:Destroy()
+    end)
+end
+
+-- Command interface
+
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Parent = ScreenGui
+Container.Size = UDim2.fromOffset(
+    COMMAND_BAR_WIDTH,
+    COMMAND_BAR_HEIGHT + COMMAND_LIST_HEIGHT + 6
+)
+Container.Position = UDim2.new(1, 20, 0.5, -110)
+Container.BackgroundTransparency = 1
+
+local CommandBar = Instance.new("Frame")
+CommandBar.Name = "CommandBar"
+CommandBar.Parent = Container
+CommandBar.Size = UDim2.fromOffset(
+    COMMAND_BAR_WIDTH,
+    COMMAND_BAR_HEIGHT
+)
+CommandBar.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
+CommandBar.BorderSizePixel = 0
+
+local CommandBarCorner = Instance.new("UICorner")
+CommandBarCorner.CornerRadius = UDim.new(0, 8)
+CommandBarCorner.Parent = CommandBar
+
+local CommandBarStroke = Instance.new("UIStroke")
+CommandBarStroke.Color = Color3.fromRGB(62, 62, 70)
+CommandBarStroke.Thickness = 1
+CommandBarStroke.Transparency = 0.2
+CommandBarStroke.Parent = CommandBar
+
+local Accent = Instance.new("Frame")
+Accent.Name = "Accent"
+Accent.Parent = CommandBar
+Accent.Size = UDim2.new(0, 3, 1, -12)
+Accent.Position = UDim2.fromOffset(6, 6)
+Accent.BackgroundColor3 = Color3.fromRGB(105, 115, 255)
+Accent.BorderSizePixel = 0
+
+local AccentCorner = Instance.new("UICorner")
+AccentCorner.CornerRadius = UDim.new(1, 0)
+AccentCorner.Parent = Accent
+
+local Box = Instance.new("TextBox")
+Box.Name = "Input"
+Box.Parent = CommandBar
+Box.Size = UDim2.new(1, -28, 1, -10)
+Box.Position = UDim2.fromOffset(20, 5)
+Box.BackgroundTransparency = 1
+Box.Text = ""
+Box.PlaceholderText = "Enter command..."
+Box.PlaceholderColor3 = Color3.fromRGB(135, 135, 145)
+Box.TextColor3 = Color3.fromRGB(240, 240, 245)
+Box.TextXAlignment = Enum.TextXAlignment.Left
+Box.ClearTextOnFocus = false
+Box.Font = Enum.Font.GothamMedium
+Box.TextSize = 15
+
+local CommandListFrame = Instance.new("Frame")
+CommandListFrame.Name = "CommandList"
+CommandListFrame.Parent = Container
+CommandListFrame.Size = UDim2.fromOffset(
+    COMMAND_BAR_WIDTH,
+    COMMAND_LIST_HEIGHT
+)
+CommandListFrame.Position = UDim2.fromOffset(
+    0,
+    COMMAND_BAR_HEIGHT + 6
+)
+CommandListFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
+CommandListFrame.BorderSizePixel = 0
+CommandListFrame.ClipsDescendants = true
+
+local CommandListCorner = Instance.new("UICorner")
+CommandListCorner.CornerRadius = UDim.new(0, 8)
+CommandListCorner.Parent = CommandListFrame
+
+local CommandListStroke = Instance.new("UIStroke")
+CommandListStroke.Color = Color3.fromRGB(62, 62, 70)
+CommandListStroke.Thickness = 1
+CommandListStroke.Transparency = 0.2
+CommandListStroke.Parent = CommandListFrame
+
+local ListTitle = Instance.new("TextLabel")
+ListTitle.Name = "Title"
+ListTitle.Parent = CommandListFrame
+ListTitle.Size = UDim2.new(1, -20, 0, 30)
+ListTitle.Position = UDim2.fromOffset(10, 0)
+ListTitle.BackgroundTransparency = 1
+ListTitle.Text = "COMMANDS"
+ListTitle.TextColor3 = Color3.fromRGB(150, 150, 160)
+ListTitle.TextXAlignment = Enum.TextXAlignment.Left
+ListTitle.Font = Enum.Font.GothamBold
+ListTitle.TextSize = 11
+
+local Divider = Instance.new("Frame")
+Divider.Parent = CommandListFrame
+Divider.Size = UDim2.new(1, -20, 0, 1)
+Divider.Position = UDim2.fromOffset(10, 30)
+Divider.BackgroundColor3 = Color3.fromRGB(52, 52, 60)
+Divider.BorderSizePixel = 0
+
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Name = "ScrollingFrame"
+ScrollingFrame.Parent = CommandListFrame
+ScrollingFrame.Size = UDim2.new(1, -12, 1, -38)
+ScrollingFrame.Position = UDim2.fromOffset(6, 34)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.BorderSizePixel = 0
+ScrollingFrame.ScrollBarThickness = 3
+ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(105, 115, 255)
+ScrollingFrame.CanvasSize = UDim2.fromOffset(0, 0)
+ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Parent = ScrollingFrame
+ListLayout.Padding = UDim.new(0, 4)
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local ListPadding = Instance.new("UIPadding")
+ListPadding.Parent = ScrollingFrame
+ListPadding.PaddingLeft = UDim.new(0, 4)
+ListPadding.PaddingRight = UDim.new(0, 8)
+ListPadding.PaddingTop = UDim.new(0, 2)
+ListPadding.PaddingBottom = UDim.new(0, 6)
+
+local OPEN_POSITION = UDim2.new(
+    1,
+    -(COMMAND_BAR_WIDTH + RIGHT_PADDING),
+    0.5,
+    -110
+)
+
+local CLOSED_POSITION = UDim2.new(
+    1,
+    20,
+    0.5,
+    -110
+)
+
+local function showMessage(message)
+    Box.Text = ""
+    Box.PlaceholderText = message
+
+    task.delay(2, function()
+        if Box.Parent and Box.PlaceholderText == message then
+            Box.PlaceholderText = "Enter command..."
+        end
+    end)
+end
+
+local function setOpen(state)
+    CommandBarOpen = state
+
+    TweenService:Create(
+        Container,
+        TweenInfo.new(
+            0.25,
+            Enum.EasingStyle.Quint,
+            Enum.EasingDirection.Out
+        ),
+        {
+            Position = state and OPEN_POSITION or CLOSED_POSITION
+        }
+    ):Play()
+
+    if state then
+        if FreecamEnabled then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            UserInputService.MouseIconEnabled = true
+        end
+
+        task.delay(0.08, function()
+            if CommandBarOpen then
+                Box:CaptureFocus()
+            end
+        end)
+    else
+        Box:ReleaseFocus()
+        Box.Text = ""
+
+        if FreecamEnabled then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+            UserInputService.MouseIconEnabled = false
+        end
+    end
+end
+
+local function createCommandEntry(data)
+    local Entry = Instance.new("Frame")
+    Entry.Name = "CommandEntry"
+    Entry.Parent = ScrollingFrame
+    Entry.Size = UDim2.new(1, 0, 0, 42)
+    Entry.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    Entry.BackgroundTransparency = 0.15
+    Entry.BorderSizePixel = 0
+    Entry.LayoutOrder = #CommandEntries
+
+    local EntryCorner = Instance.new("UICorner")
+    EntryCorner.CornerRadius = UDim.new(0, 6)
+    EntryCorner.Parent = Entry
+
+    local CommandName = Instance.new("TextLabel")
+    CommandName.Parent = Entry
+    CommandName.Size = UDim2.new(1, -16, 0, 20)
+    CommandName.Position = UDim2.fromOffset(8, 2)
+    CommandName.BackgroundTransparency = 1
+    CommandName.Text = data.usage
+    CommandName.TextColor3 = Color3.fromRGB(235, 235, 240)
+    CommandName.TextXAlignment = Enum.TextXAlignment.Left
+    CommandName.Font = Enum.Font.GothamMedium
+    CommandName.TextSize = 13
+
+    local Description = Instance.new("TextLabel")
+    Description.Parent = Entry
+    Description.Size = UDim2.new(1, -16, 0, 16)
+    Description.Position = UDim2.fromOffset(8, 21)
+    Description.BackgroundTransparency = 1
+    Description.Text = data.description
+    Description.TextColor3 = Color3.fromRGB(135, 135, 145)
+    Description.TextXAlignment = Enum.TextXAlignment.Left
+    Description.Font = Enum.Font.Gotham
+    Description.TextSize = 11
+end
+
+local function registerCommand(names, usage, description, callback)
+    if typeof(names) == "string" then
+        names = {names}
+    end
+
+    local commandData = {
+        names = names,
+        usage = usage,
+        description = description,
+        callback = callback
+    }
+
+    table.insert(CommandEntries, commandData)
+
+    for _, name in ipairs(names) do
+        Commands[name:lower()] = commandData
+    end
+
+    createCommandEntry(commandData)
+end
+
+local function findKeyCode(keyName)
+    local formattedName = keyName
+        :lower()
+        :gsub("%s+", "")
+        :gsub("_", "")
+
+    local aliases = {
+        semicolon = "Semicolon",
+        insert = "Insert",
+        delete = "Delete",
+        home = "Home",
+        endkey = "End",
+        pageup = "PageUp",
+        pagedown = "PageDown",
+        rightshift = "RightShift",
+        leftshift = "LeftShift",
+        rightcontrol = "RightControl",
+        leftcontrol = "LeftControl",
+        rightalt = "RightAlt",
+        leftalt = "LeftAlt",
+        backslash = "BackSlash",
+        leftbracket = "LeftBracket",
+        rightbracket = "RightBracket",
+        quote = "Quote",
+        comma = "Comma",
+        period = "Period",
+        slash = "Slash"
+    }
+
+    local aliasName = aliases[formattedName]
+
+    for _, keyCode in ipairs(Enum.KeyCode:GetEnumItems()) do
+        if keyCode.Name:lower() == formattedName then
+            return keyCode
+        end
+
+        if aliasName and keyCode.Name == aliasName then
+            return keyCode
+        end
+    end
+
+    return nil
+end
+
+-- Freecam
+
+local function enableFreecam()
+    if FreecamEnabled then
+        return false
+    end
+
+    Camera = workspace.CurrentCamera
+
+    SavedCameraType = Camera.CameraType
+    SavedCameraSubject = Camera.CameraSubject
+    SavedCameraCFrame = Camera.CFrame
+    SavedCameraFieldOfView = Camera.FieldOfView
+    SavedMouseBehavior = UserInputService.MouseBehavior
+    SavedMouseIconEnabled = UserInputService.MouseIconEnabled
+
+    FreecamPosition = Camera.CFrame.Position
+
+    local pitch, yaw = Camera.CFrame:ToOrientation()
+    FreecamPitch = pitch
+    FreecamYaw = yaw
+
+    table.clear(MovementKeys)
+
+    Camera.CameraType = Enum.CameraType.Scriptable
+    Camera.CameraSubject = nil
+
+    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    UserInputService.MouseIconEnabled = false
+
+    FreecamEnabled = true
+
+    return true
+end
+
+local function disableFreecam()
+    if not FreecamEnabled then
+        return false
+    end
+
+    FreecamEnabled = false
+    table.clear(MovementKeys)
+
+    Camera = workspace.CurrentCamera
+    Camera.CameraType = SavedCameraType or Enum.CameraType.Custom
+    Camera.CameraSubject = SavedCameraSubject
+    Camera.CFrame = SavedCameraCFrame or Camera.CFrame
+    Camera.FieldOfView = SavedCameraFieldOfView or 70
+
+    UserInputService.MouseBehavior =
+        SavedMouseBehavior or Enum.MouseBehavior.Default
+
+    if SavedMouseIconEnabled == nil then
+        UserInputService.MouseIconEnabled = true
+    else
+        UserInputService.MouseIconEnabled = SavedMouseIconEnabled
+    end
+
+    return true
+end
+
+local function toggleFreecam()
+    if FreecamEnabled then
+        disableFreecam()
+        return false
+    else
+        enableFreecam()
+        return true
+    end
+end
+
+local function copyToClipboard(text)
+    local clipboardFunction =
+        setclipboard
+        or toclipboard
+        or (Clipboard and Clipboard.set)
+
+    if not clipboardFunction then
+        return false
+    end
+
+    return pcall(function()
+        clipboardFunction(text)
+    end)
+end
+
+-- Server hopping
+
+local function makeRequest(options)
+    local requestFunction =
+        request
+        or http_request
+        or (syn and syn.request)
+        or (http and http.request)
+        or (fluxus and fluxus.request)
+
+    if requestFunction then
+        return requestFunction(options)
+    end
+
+    if game.HttpGet then
+        return {
+            Success = true,
+            StatusCode = 200,
+            Body = game:HttpGet(options.Url)
+        }
+    end
+
+    return nil
+end
+
+local function findDifferentServer()
+    local cursor = nil
+    local checkedPages = 0
+    local maximumPages = 10
+
+    repeat
+        checkedPages += 1
+
+        local cursorText = ""
+
+        if cursor then
+            cursorText =
+                "&cursor=" .. HttpService:UrlEncode(cursor)
+        end
+
+        local url = string.format(
+            "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s",
+            game.PlaceId,
+            cursorText
+        )
+
+        local response = makeRequest({
+            Url = url,
+            Method = "GET"
+        })
+
+        if not response then
+            return nil, "HTTP requests are unavailable."
+        end
+
+        if response.Success == false then
+            return nil, "The server request failed."
+        end
+
+        if response.StatusCode and response.StatusCode ~= 200 then
+            return nil, "The server request failed."
+        end
+
+        local success, serverData = pcall(function()
+            return HttpService:JSONDecode(response.Body)
+        end)
+
+        if not success or typeof(serverData) ~= "table" then
+            return nil, "Could not read the server list."
+        end
+
+        local availableServers = {}
+
+        for _, server in ipairs(serverData.data or {}) do
+            local isDifferentServer = server.id ~= game.JobId
+            local hasSpace = server.playing < server.maxPlayers
+
+            if isDifferentServer and hasSpace then
+                table.insert(availableServers, server.id)
+            end
+        end
+
+        if #availableServers > 0 then
+            return availableServers[
+                math.random(1, #availableServers)
+            ]
+        end
+
+        cursor = serverData.nextPageCursor
+    until not cursor or checkedPages >= maximumPages
+
+    return nil, "No other public servers were found."
+end
+
+RunService:BindToRenderStep(
+    "ClientAdminFreecam",
+    Enum.RenderPriority.Camera.Value + 1,
+    function(deltaTime)
+        if not FreecamEnabled then
+            return
+        end
+
+        Camera = workspace.CurrentCamera
+        Camera.CameraType = Enum.CameraType.Scriptable
+
+        if not CommandBarOpen then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+            UserInputService.MouseIconEnabled = false
+
+            local mouseDelta = UserInputService:GetMouseDelta()
+
+            FreecamYaw -= mouseDelta.X * FreecamSensitivity
+            FreecamPitch -= mouseDelta.Y * FreecamSensitivity
+
+            FreecamPitch = math.clamp(
+                FreecamPitch,
+                math.rad(-89),
+                math.rad(89)
+            )
+        end
+
+        local rotation =
+            CFrame.Angles(0, FreecamYaw, 0)
+            * CFrame.Angles(FreecamPitch, 0, 0)
+
+        local direction = Vector3.zero
+
+        if not CommandBarOpen then
+            if MovementKeys[Enum.KeyCode.W] then
+                direction += Vector3.new(0, 0, -1)
+            end
+
+            if MovementKeys[Enum.KeyCode.S] then
+                direction += Vector3.new(0, 0, 1)
+            end
+
+            if MovementKeys[Enum.KeyCode.A] then
+                direction += Vector3.new(-1, 0, 0)
+            end
+
+            if MovementKeys[Enum.KeyCode.D] then
+                direction += Vector3.new(1, 0, 0)
+            end
+
+            if MovementKeys[Enum.KeyCode.E] then
+                direction += Vector3.new(0, 1, 0)
+            end
+
+            if MovementKeys[Enum.KeyCode.Q] then
+                direction += Vector3.new(0, -1, 0)
+            end
+        end
+
+        if direction.Magnitude > 0 then
+            direction = direction.Unit
+
+            local currentSpeed = FreecamSpeed
+
+            if MovementKeys[Enum.KeyCode.LeftShift]
+                or MovementKeys[Enum.KeyCode.RightShift] then
+                currentSpeed = FreecamFastSpeed
+            end
+
+            local movement =
+                rotation.RightVector * direction.X
+                + Vector3.yAxis * direction.Y
+                - rotation.LookVector * direction.Z
+
+            FreecamPosition += movement * currentSpeed * deltaTime
+        end
+
+        Camera.CFrame = CFrame.new(FreecamPosition) * rotation
+    end
+)
+
+-- Commands
+
+registerCommand(
+    {"keybind"},
+    "keybind (key)",
+    "Changes the command bar keybind",
+    function(arguments)
+        local requestedKey = arguments[1]
+
+        if not requestedKey then
+            return "Usage: keybind (key)"
+        end
+
+        local newKey = findKeyCode(requestedKey)
+
+        if not newKey or newKey == Enum.KeyCode.Unknown then
+            return "Invalid key: " .. requestedKey
+        end
+
+        ToggleKey = newKey
+
+        sendNotification(
+            "Keybind Changed",
+            "Command bar key changed to " .. newKey.Name .. ".",
+            4
+        )
+
+        return "Keybind changed to " .. newKey.Name
+    end
+)
+
+registerCommand(
+    {"freecam", "fc"},
+    "freecam / fc",
+    "Toggles freecam",
+    function()
+        local enabled = toggleFreecam()
+
+        task.defer(function()
+            setOpen(false)
+        end)
+
+        if enabled then
+            sendNotification(
+                "Freecam",
+                "Freecam has been enabled.",
+                4
+            )
+
+            return "Freecam enabled"
+        else
+            sendNotification(
+                "Freecam",
+                "Freecam has been disabled.",
+                4
+            )
+
+            return "Freecam disabled"
+        end
+    end
+)
+
+registerCommand(
+    {"copyfcpos", "fcpos", "freecampos"},
+    "copyfcpos / fcpos / freecampos",
+    "Copies the freecam position",
+    function()
+        if not FreecamEnabled then
+            sendNotification(
+                "Freecam Position",
+                "Freecam is not currently enabled.",
+                4
+            )
+
+            return "Freecam is not enabled"
+        end
+
+        local position = Camera.CFrame.Position
+
+        local positionText = string.format(
+            "Vector3.new(%.2f, %.2f, %.2f)",
+            position.X,
+            position.Y,
+            position.Z
+        )
+
+        if copyToClipboard(positionText) then
+            sendNotification(
+                "Position Copied",
+                positionText,
+                5
+            )
+
+            return "Freecam position copied"
+        end
+
+        sendNotification(
+            "Clipboard Unavailable",
+            positionText,
+            6
+        )
+
+        return positionText
+    end
+)
+
+registerCommand(
+    {"rejoin", "rj"},
+    "rejoin / rj",
+    "Rejoins the current server",
+    function()
+        local placeId = game.PlaceId
+        local jobId = game.JobId
+
+        task.defer(function()
+            setOpen(false)
+
+            sendNotification(
+                "Rejoin",
+                "Rejoining the current server...",
+                4
+            )
+
+            local success = pcall(function()
+                TeleportService:TeleportToPlaceInstance(
+                    placeId,
+                    jobId,
+                    LocalPlayer
+                )
+            end)
+
+            if not success then
+                local fallbackSuccess = pcall(function()
+                    TeleportService:Teleport(
+                        placeId,
+                        LocalPlayer
+                    )
+                end)
+
+                if not fallbackSuccess then
+                    sendNotification(
+                        "Rejoin Failed",
+                        "The teleport could not be started.",
+                        6
+                    )
+                end
+            end
+        end)
+
+        return "Rejoining server..."
+    end
+)
+
+registerCommand(
+    {"serverhop", "shop"},
+    "serverhop / shop",
+    "Joins a different public server",
+    function()
+        task.defer(function()
+            setOpen(false)
+
+            sendNotification(
+                "Server Hop",
+                "Searching for another server...",
+                4
+            )
+
+            local serverId, failureReason =
+                findDifferentServer()
+
+            if not serverId then
+                sendNotification(
+                    "Server Hop Failed",
+                    failureReason
+                        or "No other server could be found.",
+                    6
+                )
+
+                return
+            end
+
+            sendNotification(
+                "Server Found",
+                "Joining another public server...",
+                4
+            )
+
+            local success = pcall(function()
+                TeleportService:TeleportToPlaceInstance(
+                    game.PlaceId,
+                    serverId,
+                    LocalPlayer
+                )
+            end)
+
+            if not success then
+                sendNotification(
+                    "Server Hop Failed",
+                    "The teleport could not be started.",
+                    6
+                )
+            end
+        end)
+
+        return "Searching for another server..."
+    end
+)
+
+local function executeCommand(text)
+    local arguments = {}
+
+    for word in text:gmatch("%S+") do
+        table.insert(arguments, word)
+    end
+
+    if #arguments == 0 then
+        return
+    end
+
+    local commandName = table.remove(arguments, 1):lower()
+    local commandData = Commands[commandName]
+
+    if not commandData then
+        showMessage("Unknown command: " .. commandName)
+
+        sendNotification(
+            "Unknown Command",
+            commandName .. " is not a valid command.",
+            4
+        )
+
+        return
+    end
+
+    local success, result = pcall(function()
+        return commandData.callback(arguments)
+    end)
+
+    if not success then
+        showMessage("Command failed")
+
+        sendNotification(
+            "Command Failed",
+            "An error occurred while running " .. commandName .. ".",
+            5
+        )
+
+        return
+    end
+
+    if typeof(result) == "string" and result ~= "" then
+        showMessage(result)
+    else
+        Box.Text = ""
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        MovementKeys[input.KeyCode] = true
+    end
+
+    if input.KeyCode ~= ToggleKey then
+        return
+    end
+
+    if gameProcessed and not Box:IsFocused() then
+        return
+    end
+
+    setOpen(not CommandBarOpen)
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        MovementKeys[input.KeyCode] = nil
+    end
+end)
+
+Box.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local text = Box.Text
+        Box.Text = ""
+        executeCommand(text)
+    end
+end)
+
+ScreenGui.Destroying:Connect(function()
+    if FreecamEnabled then
+        disableFreecam()
+    end
+
+    pcall(function()
+        RunService:UnbindFromRenderStep(
+            "ClientAdminFreecam"
+        )
+    end)
+end)
