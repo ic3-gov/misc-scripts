@@ -8,6 +8,8 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local ViewingPlayer = nil
+local PreviousCameraSubject = nil
 
 pcall(function()
     local oldGui = CoreGui:FindFirstChild("ClientAdmin")
@@ -27,6 +29,7 @@ local RIGHT_PADDING = 10
 
 local Commands = {}
 local CommandEntries = {}
+local CommandEntryFrames = {}
 
 local FreecamEnabled = false
 local FreecamPosition = Vector3.zero
@@ -543,6 +546,7 @@ local function setOpen(state)
     else
         Box:ReleaseFocus()
         Box.Text = ""
+        filterCommandList("")
 
         if FreecamEnabled then
             UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
@@ -586,6 +590,20 @@ local function createCommandEntry(data)
     Description.TextXAlignment = Enum.TextXAlignment.Left
     Description.Font = Enum.Font.Gotham
     Description.TextSize = 11
+
+    local searchableParts = {
+        data.usage,
+        data.description
+    }
+
+    for _, name in ipairs(data.names) do
+        table.insert(searchableParts, name)
+    end
+
+    table.insert(CommandEntryFrames, {
+        frame = Entry,
+        searchText = table.concat(searchableParts, " "):lower()
+    })
 end
 
 local function registerCommand(names, usage, description, callback)
@@ -608,6 +626,46 @@ local function registerCommand(names, usage, description, callback)
 
     createCommandEntry(commandData)
 end
+
+local function filterCommandList(searchText)
+    local query = tostring(searchText or "")
+        :lower()
+        :match("^%s*(.-)%s*$")
+
+    -- Only search using the command portion before the first space.
+    -- This keeps matching stable while typing command arguments.
+    query = query:match("^(%S*)") or ""
+
+    local visibleCount = 0
+
+    for _, entryData in ipairs(CommandEntryFrames) do
+        local isVisible =
+            query == ""
+            or entryData.searchText:find(query, 1, true) ~= nil
+
+        entryData.frame.Visible = isVisible
+
+        if isVisible then
+            visibleCount += 1
+        end
+    end
+
+    if query == "" then
+        ListTitle.Text = "COMMANDS"
+    else
+        ListTitle.Text = string.format(
+            "COMMANDS  •  %d RESULT%s",
+            visibleCount,
+            visibleCount == 1 and "" or "S"
+        )
+    end
+
+    ScrollingFrame.CanvasPosition = Vector2.zero
+end
+
+Box:GetPropertyChangedSignal("Text"):Connect(function()
+    filterCommandList(Box.Text)
+end)
 
 local function findKeyCode(keyName)
     local formattedName = keyName
@@ -914,7 +972,384 @@ RunService:BindToRenderStep(
     end
 )
 
+
+-- Basic admin state / helpers
+
+local NoclipEnabled = false
+local NoclipOriginalStates = {}
+local FlyEnabled = false
+local FlySpeed = 70
+local FlyBodyVelocity = nil
+local FlyBodyGyro = nil
+local SpinEnabled = false
+local SpinSpeed = 8
+local SpinConnection = nil
+local HeadlessEnabled = false
+local InvisibleEnabled = false
+
+local function getCharacter()
+    return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+end
+
+local function getHumanoid()
+    local character = getCharacter()
+    return character:FindFirstChildWhichIsA("Humanoid")
+end
+
+local function getRootPart()
+    local character = getCharacter()
+    return character:FindFirstChild("HumanoidRootPart")
+        or character.PrimaryPart
+end
+
+local function findPlayerByText(text)
+    text = tostring(text or ""):lower()
+
+    if text == "" then
+        return LocalPlayer
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        local name = player.Name:lower()
+        local displayName = player.DisplayName:lower()
+
+        if name:sub(1, #text) == text
+        or displayName:sub(1, #text) == text then
+            return player
+        end
+    end
+
+    return nil
+end
+
+local function setNoclip(state)
+    NoclipEnabled = state
+
+    if not state then
+        for part, originalCanCollide in pairs(NoclipOriginalStates) do
+            if part and part.Parent then
+                pcall(function()
+                    part.CanCollide = originalCanCollide
+                end)
+            end
+        end
+
+        table.clear(NoclipOriginalStates)
+    end
+end
+
+RunService.Stepped:Connect(function()
+    if not NoclipEnabled then
+        return
+    end
+
+    local character = LocalPlayer.Character
+    if not character then
+        return
+    end
+
+    for _, descendant in ipairs(character:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            if NoclipOriginalStates[descendant] == nil then
+                NoclipOriginalStates[descendant] = descendant.CanCollide
+            end
+
+            descendant.CanCollide = false
+        end
+    end
+end)
+
+local function stopFly()
+    FlyEnabled = false
+
+    if FlyBodyVelocity then
+        FlyBodyVelocity:Destroy()
+        FlyBodyVelocity = nil
+    end
+
+    if FlyBodyGyro then
+        FlyBodyGyro:Destroy()
+        FlyBodyGyro = nil
+    end
+
+    local humanoid = LocalPlayer.Character
+        and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+
+    if humanoid then
+        humanoid.PlatformStand = false
+    end
+end
+
+local function startFly()
+    local root = getRootPart()
+    local humanoid = getHumanoid()
+
+    if not root or not humanoid then
+        return false
+    end
+
+    stopFly()
+
+    FlyBodyVelocity = Instance.new("BodyVelocity")
+    FlyBodyVelocity.Name = "ClientAdminFlyVelocity"
+    FlyBodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    FlyBodyVelocity.Velocity = Vector3.zero
+    FlyBodyVelocity.Parent = root
+
+    FlyBodyGyro = Instance.new("BodyGyro")
+    FlyBodyGyro.Name = "ClientAdminFlyGyro"
+    FlyBodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    FlyBodyGyro.P = 9e4
+    FlyBodyGyro.CFrame = root.CFrame
+    FlyBodyGyro.Parent = root
+
+    humanoid.PlatformStand = true
+    FlyEnabled = true
+    return true
+end
+
+RunService:BindToRenderStep(
+    "ClientAdminFly",
+    Enum.RenderPriority.Character.Value + 1,
+    function()
+        if not FlyEnabled then
+            return
+        end
+
+        local root = LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+        if not root or not FlyBodyVelocity or not FlyBodyGyro then
+            stopFly()
+            return
+        end
+
+        Camera = workspace.CurrentCamera
+
+        local direction = Vector3.zero
+
+        if MovementKeys[Enum.KeyCode.W] then
+            direction += Camera.CFrame.LookVector
+        end
+
+        if MovementKeys[Enum.KeyCode.S] then
+            direction -= Camera.CFrame.LookVector
+        end
+
+        if MovementKeys[Enum.KeyCode.A] then
+            direction -= Camera.CFrame.RightVector
+        end
+
+        if MovementKeys[Enum.KeyCode.D] then
+            direction += Camera.CFrame.RightVector
+        end
+
+        if MovementKeys[Enum.KeyCode.E]
+        or MovementKeys[Enum.KeyCode.Space] then
+            direction += Vector3.yAxis
+        end
+
+        if MovementKeys[Enum.KeyCode.Q]
+        or MovementKeys[Enum.KeyCode.LeftControl]
+        or MovementKeys[Enum.KeyCode.RightControl] then
+            direction -= Vector3.yAxis
+        end
+
+        if direction.Magnitude > 0 then
+            direction = direction.Unit
+        end
+
+        FlyBodyVelocity.Velocity = direction * FlySpeed
+        FlyBodyGyro.CFrame = CFrame.lookAt(
+            root.Position,
+            root.Position + Camera.CFrame.LookVector
+        )
+    end
+)
+
+local function stopSpin()
+    SpinEnabled = false
+
+    if SpinConnection then
+        SpinConnection:Disconnect()
+        SpinConnection = nil
+    end
+end
+
+local function startSpin(speed)
+    stopSpin()
+    SpinSpeed = speed or SpinSpeed
+    SpinEnabled = true
+
+    SpinConnection = RunService.Heartbeat:Connect(function(deltaTime)
+        local root = LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+        if root then
+            root.CFrame *= CFrame.Angles(0, SpinSpeed * deltaTime, 0)
+        end
+    end)
+end
+
+local function setInvisible(state)
+    InvisibleEnabled = state
+
+    local character = LocalPlayer.Character
+    if not character then
+        return
+    end
+
+    for _, descendant in ipairs(character:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            local keepHidden = HeadlessEnabled and descendant.Name == "Head"
+            descendant.LocalTransparencyModifier =
+                (state or keepHidden) and 1 or 0
+        elseif descendant:IsA("Decal") then
+            local keepHidden = HeadlessEnabled
+                and descendant.Parent
+                and descendant.Parent.Name == "Head"
+
+            descendant.Transparency = (state or keepHidden) and 1 or 0
+        end
+    end
+end
+
+local function setHeadless(state)
+    HeadlessEnabled = state
+
+    local character = LocalPlayer.Character
+    local head = character and character:FindFirstChild("Head")
+
+    if not head then
+        return false
+    end
+
+    head.LocalTransparencyModifier =
+        (state or InvisibleEnabled) and 1 or 0
+
+    for _, child in ipairs(head:GetChildren()) do
+        if child:IsA("Decal") then
+            child.Transparency =
+                (state or InvisibleEnabled) and 1 or 0
+        end
+    end
+
+    return true
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.25)
+
+    if NoclipEnabled then
+        table.clear(NoclipOriginalStates)
+    end
+
+    if InvisibleEnabled then
+        setInvisible(true)
+    end
+
+    if HeadlessEnabled then
+        setHeadless(true)
+    end
+
+    if FlyEnabled then
+        task.defer(startFly)
+    end
+end)
+
 -- Commands
+
+registerCommand(
+    {"view", "spectate"},
+    "view / spectate (player)",
+    "Views another player's character",
+    function(arguments)
+        local targetName = table.concat(arguments, " ")
+
+        if targetName == "" then
+            return "Usage: view (player)"
+        end
+
+        local target
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Name:lower():sub(1, #targetName) == targetName:lower()
+            or player.DisplayName:lower():sub(1, #targetName) == targetName:lower() then
+                target = player
+                break
+            end
+        end
+
+        if not target then
+            return "Player not found."
+        end
+
+        if target == LocalPlayer then
+            return "Use unview to return to yourself."
+        end
+
+        local character = target.Character
+        if not character then
+            return "Player has no character."
+        end
+
+        local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+        if not humanoid then
+            return "Player has no humanoid."
+        end
+
+        Camera = workspace.CurrentCamera
+
+        PreviousCameraSubject = LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+
+        Camera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = humanoid
+
+        ViewingPlayer = target
+
+        sendNotification(
+            "Viewing",
+            "Now viewing "..target.DisplayName..".",
+            4
+        )
+
+        return "Viewing "..target.DisplayName
+    end
+)
+
+registerCommand(
+    {"unview", "unspectate"},
+    "unview / unspectate",
+    "Returns the camera to yourself",
+    function()
+        local character = LocalPlayer.Character
+
+        if not character then
+            return "Character not loaded."
+        end
+
+        local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        Camera = workspace.CurrentCamera
+        Camera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = humanoid
+
+        ViewingPlayer = nil
+
+        sendNotification(
+            "Viewing",
+            "Returned camera to yourself.",
+            4
+        )
+
+        return "Stopped viewing."
+    end
+)
 
 registerCommand(
     {"keybind"},
@@ -1122,6 +1557,541 @@ registerCommand(
     end
 )
 
+
+registerCommand(
+    {"walkspeed", "ws"},
+    "walkspeed / ws (number)",
+    "Changes your WalkSpeed",
+    function(arguments)
+        local speed = tonumber(arguments[1])
+        if not speed then
+            return "Usage: walkspeed (number)"
+        end
+
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        humanoid.WalkSpeed = speed
+        return "WalkSpeed set to " .. tostring(speed)
+    end
+)
+
+registerCommand(
+    {"jumppower", "jp"},
+    "jumppower / jp (number)",
+    "Changes your JumpPower",
+    function(arguments)
+        local power = tonumber(arguments[1])
+        if not power then
+            return "Usage: jumppower (number)"
+        end
+
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = power
+        return "JumpPower set to " .. tostring(power)
+    end
+)
+
+registerCommand(
+    {"reset", "respawn"},
+    "reset / respawn",
+    "Resets your character",
+    function()
+        local character = LocalPlayer.Character
+        if not character then
+            return "Character not loaded."
+        end
+
+        stopFly()
+        stopSpin()
+        character:BreakJoints()
+        return "Character reset"
+    end
+)
+
+registerCommand(
+    {"sit"},
+    "sit",
+    "Makes your character sit",
+    function()
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        humanoid.Sit = true
+        return "Sitting"
+    end
+)
+
+registerCommand(
+    {"unsit", "stand"},
+    "unsit / stand",
+    "Makes your character stand",
+    function()
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        humanoid.Sit = false
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        return "Standing"
+    end
+)
+
+registerCommand(
+    {"noclip"},
+    "noclip",
+    "Toggles character collision",
+    function()
+        setNoclip(not NoclipEnabled)
+        return NoclipEnabled and "Noclip enabled" or "Noclip disabled"
+    end
+)
+
+registerCommand(
+    {"fly"},
+    "fly",
+    "Toggles client-side flight",
+    function()
+        if FlyEnabled then
+            stopFly()
+            return "Fly disabled"
+        end
+
+        if startFly() then
+            return "Fly enabled"
+        end
+
+        return "Character not loaded."
+    end
+)
+
+registerCommand(
+    {"flyspeed", "fs"},
+    "flyspeed / fs (number)",
+    "Changes fly movement speed",
+    function(arguments)
+        local speed = tonumber(arguments[1])
+        if not speed then
+            return "Usage: flyspeed (number)"
+        end
+
+        FlySpeed = speed
+        return "Fly speed set to " .. tostring(speed)
+    end
+)
+
+registerCommand(
+    {"fov"},
+    "fov (number)",
+    "Changes the camera field of view",
+    function(arguments)
+        local fov = tonumber(arguments[1])
+        if not fov then
+            return "Usage: fov (number)"
+        end
+
+        Camera = workspace.CurrentCamera
+        Camera.FieldOfView = math.clamp(fov, 1, 120)
+        return "FOV set to " .. tostring(Camera.FieldOfView)
+    end
+)
+
+registerCommand(
+    {"copypos", "pos"},
+    "copypos / pos",
+    "Copies your current position",
+    function()
+        local root = getRootPart()
+        if not root then
+            return "Character not loaded."
+        end
+
+        local p = root.Position
+        local text = string.format(
+            "Vector3.new(%.2f, %.2f, %.2f)",
+            p.X, p.Y, p.Z
+        )
+
+        if copyToClipboard(text) then
+            return "Position copied"
+        end
+
+        return text
+    end
+)
+
+registerCommand(
+    {"copycframe", "cframe"},
+    "copycframe / cframe",
+    "Copies your current CFrame",
+    function()
+        local root = getRootPart()
+        if not root then
+            return "Character not loaded."
+        end
+
+        local components = {root.CFrame:GetComponents()}
+        local formatted = {}
+
+        for _, value in ipairs(components) do
+            table.insert(formatted, string.format("%.6f", value))
+        end
+
+        local text = "CFrame.new(" .. table.concat(formatted, ", ") .. ")"
+
+        if copyToClipboard(text) then
+            return "CFrame copied"
+        end
+
+        return text
+    end
+)
+
+registerCommand(
+    {"copyuserid", "userid"},
+    "copyuserid / userid (player)",
+    "Copies a player's UserId; defaults to you",
+    function(arguments)
+        local target = findPlayerByText(table.concat(arguments, " "))
+        if not target then
+            return "Player not found."
+        end
+
+        local text = tostring(target.UserId)
+        if copyToClipboard(text) then
+            return target.Name .. " UserId copied"
+        end
+
+        return text
+    end
+)
+
+registerCommand(
+    {"copyname", "name"},
+    "copyname / name (player)",
+    "Copies a player's username; defaults to you",
+    function(arguments)
+        local target = findPlayerByText(table.concat(arguments, " "))
+        if not target then
+            return "Player not found."
+        end
+
+        if copyToClipboard(target.Name) then
+            return "Username copied"
+        end
+
+        return target.Name
+    end
+)
+
+registerCommand(
+    {"copydisplayname", "displayname"},
+    "copydisplayname / displayname (player)",
+    "Copies a player's display name; defaults to you",
+    function(arguments)
+        local target = findPlayerByText(table.concat(arguments, " "))
+        if not target then
+            return "Player not found."
+        end
+
+        if copyToClipboard(target.DisplayName) then
+            return "Display name copied"
+        end
+
+        return target.DisplayName
+    end
+)
+
+registerCommand(
+    {"copyjobid", "jobid"},
+    "copyjobid / jobid",
+    "Copies the current server JobId",
+    function()
+        if copyToClipboard(game.JobId) then
+            return "JobId copied"
+        end
+
+        return game.JobId
+    end
+)
+
+registerCommand(
+    {"copyplaceid", "placeid"},
+    "copyplaceid / placeid",
+    "Copies the current PlaceId",
+    function()
+        local text = tostring(game.PlaceId)
+        if copyToClipboard(text) then
+            return "PlaceId copied"
+        end
+
+        return text
+    end
+)
+
+registerCommand(
+    {"copygameid", "gameid"},
+    "copygameid / gameid",
+    "Copies the current universe GameId",
+    function()
+        local text = tostring(game.GameId)
+        if copyToClipboard(text) then
+            return "GameId copied"
+        end
+
+        return text
+    end
+)
+
+registerCommand(
+    {"copyjoin", "joincode"},
+    "copyjoin / joincode",
+    "Copies a TeleportToPlaceInstance join script",
+    function()
+        local text = string.format(
+            'game:GetService("TeleportService"):TeleportToPlaceInstance(%d, %q, game:GetService("Players").LocalPlayer)',
+            game.PlaceId,
+            game.JobId
+        )
+
+        if copyToClipboard(text) then
+            return "Join script copied"
+        end
+
+        return text
+    end
+)
+
+registerCommand(
+    {"fpsunlock", "unlockfps"},
+    "fpsunlock / unlockfps (number)",
+    "Sets the FPS cap when supported",
+    function(arguments)
+        local setter = setfpscap or set_fps_cap
+        if not setter then
+            return "FPS cap control is unavailable."
+        end
+
+        local cap = tonumber(arguments[1]) or 0
+        local ok = pcall(function()
+            setter(cap)
+        end)
+
+        if not ok then
+            return "Failed to change FPS cap."
+        end
+
+        return cap == 0
+            and "FPS cap unlocked"
+            or "FPS cap set to " .. tostring(cap)
+    end
+)
+
+registerCommand(
+    {"time", "servertime"},
+    "time / servertime",
+    "Shows the current server clock time",
+    function()
+        local success, text = pcall(function()
+            local serverTimestamp = workspace:GetServerTimeNow()
+            local dateTime = DateTime.fromUnixTimestamp(serverTimestamp)
+
+            return dateTime:FormatUniversalTime(
+                "HH:mm:ss",
+                "en-us"
+            ) .. " UTC"
+        end)
+
+        if not success then
+            return "Server time unavailable."
+        end
+
+        sendNotification("Server Time", text, 4)
+        return text
+    end
+)
+
+registerCommand(
+    {"ping"},
+    "ping",
+    "Shows your current network ping",
+    function()
+        local success, ping = pcall(function()
+            return LocalPlayer:GetNetworkPing() * 1000
+        end)
+
+        if not success then
+            return "Ping unavailable."
+        end
+
+        local text = string.format("%.0f ms", ping)
+        sendNotification("Ping", text, 4)
+        return text
+    end
+)
+
+registerCommand(
+    {"zoom"},
+    "zoom (number)",
+    "Changes your maximum camera zoom distance",
+    function(arguments)
+        local distance = tonumber(arguments[1])
+        if not distance then
+            return "Usage: zoom (number)"
+        end
+
+        LocalPlayer.CameraMaxZoomDistance = math.max(0.5, distance)
+        return "Max zoom set to " .. tostring(distance)
+    end
+)
+
+registerCommand(
+    {"camreset", "resetcam"},
+    "camreset / resetcam",
+    "Restores the camera to your character",
+    function()
+        if FreecamEnabled then
+            disableFreecam()
+        end
+
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        Camera = workspace.CurrentCamera
+        Camera.CameraType = Enum.CameraType.Custom
+        Camera.CameraSubject = humanoid
+        Camera.FieldOfView = 70
+        ViewingPlayer = nil
+        return "Camera reset"
+    end
+)
+
+registerCommand(
+    {"freecamspeed", "fcspeed"},
+    "freecamspeed / fcspeed (number)",
+    "Changes freecam movement speed",
+    function(arguments)
+        local speed = tonumber(arguments[1])
+        if not speed then
+            return "Usage: freecamspeed (number)"
+        end
+
+        FreecamSpeed = speed
+        FreecamFastSpeed = speed * 2.9
+        return "Freecam speed set to " .. tostring(speed)
+    end
+)
+
+registerCommand(
+    {"spin"},
+    "spin (speed)",
+    "Spins your character",
+    function(arguments)
+        local speed = tonumber(arguments[1]) or 8
+        startSpin(speed)
+        return "Spin enabled at speed " .. tostring(speed)
+    end
+)
+
+registerCommand(
+    {"unspin"},
+    "unspin",
+    "Stops spinning your character",
+    function()
+        stopSpin()
+        return "Spin disabled"
+    end
+)
+
+registerCommand(
+    {"dance"},
+    "dance",
+    "Plays the default dance emote",
+    function()
+        local humanoid = getHumanoid()
+        if not humanoid then
+            return "Character not loaded."
+        end
+
+        local success = pcall(function()
+            humanoid:PlayEmote("dance")
+        end)
+
+        if not success then
+            return "Dance emote is unavailable."
+        end
+
+        return "Dancing"
+    end
+)
+
+registerCommand(
+    {"headless"},
+    "headless",
+    "Toggles a client-side headless effect",
+    function()
+        local newState = not HeadlessEnabled
+        if not setHeadless(newState) then
+            return "Character head not found."
+        end
+
+        return HeadlessEnabled and "Headless enabled" or "Headless disabled"
+    end
+)
+
+registerCommand(
+    {"invisible", "invis"},
+    "invisible / invis",
+    "Toggles client-side invisibility",
+    function()
+        setInvisible(not InvisibleEnabled)
+        return InvisibleEnabled and "Invisible enabled" or "Invisible disabled"
+    end
+)
+
+registerCommand(
+    {"clear"},
+    "clear",
+    "Clears the command input and search",
+    function()
+        Box.Text = ""
+        filterCommandList("")
+        ScrollingFrame.CanvasPosition = Vector2.zero
+        return "Cleared"
+    end
+)
+
+registerCommand(
+    {"cmds", "commands"},
+    "cmds / commands",
+    "Shows the full command list",
+    function()
+        Box.Text = ""
+        filterCommandList("")
+        ScrollingFrame.CanvasPosition = Vector2.zero
+
+        sendNotification(
+            "Commands",
+            tostring(#CommandEntries) .. " commands available.",
+            4
+        )
+
+        return tostring(#CommandEntries) .. " commands available"
+    end
+)
+
 local function executeCommand(text)
     local arguments = {}
 
@@ -1206,9 +2176,27 @@ ScreenGui.Destroying:Connect(function()
         disableFreecam()
     end
 
+    setNoclip(false)
+    stopFly()
+    stopSpin()
+
+    if InvisibleEnabled then
+        setInvisible(false)
+    end
+
+    if HeadlessEnabled then
+        setHeadless(false)
+    end
+
     pcall(function()
         RunService:UnbindFromRenderStep(
             "ClientAdminFreecam"
+        )
+    end)
+
+    pcall(function()
+        RunService:UnbindFromRenderStep(
+            "ClientAdminFly"
         )
     end)
 end)
