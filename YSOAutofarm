@@ -1,0 +1,1558 @@
+--==========================================================
+-- FOOD DELIVERY AUTO
+--==========================================================
+
+local ENV = getgenv()
+
+--==========================================================
+-- CLEAN UP OLD VERSION
+--==========================================================
+
+if ENV.FoodDeliveryAuto then
+    local old = ENV.FoodDeliveryAuto
+
+    old.Killed = true
+
+    if old.Gui then
+        pcall(function()
+            old.Gui:Destroy()
+        end)
+    end
+
+    if old.Connections then
+        for _, connection in ipairs(old.Connections) do
+            pcall(function()
+                connection:Disconnect()
+            end)
+        end
+    end
+end
+
+local DEV = {
+    Killed = false,
+    Gui = nil,
+    Connections = {}
+}
+
+ENV.FoodDeliveryAuto = DEV
+
+local function alive()
+    return not DEV.Killed
+end
+
+local function connect(signal, callback)
+    local connection = signal:Connect(callback)
+    table.insert(DEV.Connections, connection)
+    return connection
+end
+
+--==========================================================
+-- SERVICES
+--==========================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+--==========================================================
+-- JOB PATHS
+--==========================================================
+
+local foodDelivery =
+    workspace
+    :WaitForChild("InteractiveJobThings")
+    :WaitForChild("Food Delivery")
+
+local pickupPoints =
+    foodDelivery:WaitForChild("PickupPoints")
+
+local deliveryPoints =
+    foodDelivery:WaitForChild("DeliveryPoints")
+
+--==========================================================
+-- SETTINGS
+--==========================================================
+
+local SPEED_MIN = 10
+local SPEED_MAX = 250
+
+local speed = 60
+
+local autoEnabled = false
+local running = false
+
+local FOOD_BOX_NAME = "Food box"
+
+local OBSTACLE_PADDING = 5
+local GROUND_CLEARANCE = 3
+local LOOK_AHEAD = 6
+
+local DIRECT_TELEPORT_DISTANCE = 30
+
+-- How long to wait between delivery prompt retries.
+local DELIVERY_RETRY_DELAY = 0.75
+
+--==========================================================
+-- CHARACTER
+--==========================================================
+
+local function getCharacter()
+    return player.Character
+        or player.CharacterAdded:Wait()
+end
+
+local function getRoot()
+    return getCharacter():WaitForChild(
+        "HumanoidRootPart"
+    )
+end
+
+--==========================================================
+-- FOOD BOX
+--==========================================================
+
+local function getFoodBox()
+
+    local character = getCharacter()
+
+    local box =
+        character:FindFirstChild(
+            FOOD_BOX_NAME,
+            true
+        )
+
+    if box then
+        return box
+    end
+
+    local backpack =
+        player:FindFirstChildOfClass(
+            "Backpack"
+        )
+
+    if backpack then
+
+        box =
+            backpack:FindFirstChild(
+                FOOD_BOX_NAME,
+                true
+            )
+
+        if box then
+            return box
+        end
+    end
+
+    return nil
+end
+
+local function hasFoodBox()
+    return getFoodBox() ~= nil
+end
+
+--==========================================================
+-- ACTIVE POINT DETECTION
+--==========================================================
+
+local function getActivePoint(folder, pointName)
+
+    for _, point in ipairs(
+        folder:GetChildren()
+    ) do
+
+        if point:IsA("BasePart")
+            and point.Name == pointName then
+
+            local billboard =
+                point:FindFirstChild(
+                    "BillboardGui"
+                )
+
+            if billboard
+                and billboard.Enabled then
+
+                return point
+            end
+        end
+    end
+
+    return nil
+end
+
+local function getActivePickup()
+    return getActivePoint(
+        pickupPoints,
+        "Pickup"
+    )
+end
+
+local function getActiveDelivery()
+    return getActivePoint(
+        deliveryPoints,
+        "Delivery"
+    )
+end
+
+--==========================================================
+-- DISTANCE
+--==========================================================
+
+local function getHorizontalDistance(
+    positionA,
+    positionB
+)
+
+    local difference =
+        Vector3.new(
+            positionA.X - positionB.X,
+            0,
+            positionA.Z - positionB.Z
+        )
+
+    return difference.Magnitude
+end
+
+--==========================================================
+-- RAYCAST
+--==========================================================
+
+local function makeRayParams()
+
+    local params =
+        RaycastParams.new()
+
+    params.FilterType =
+        Enum.RaycastFilterType.Exclude
+
+    params.FilterDescendantsInstances = {
+        getCharacter()
+    }
+
+    params.IgnoreWater = false
+
+    return params
+end
+
+local function getPartTop(
+    part,
+    hitPosition
+)
+
+    if part
+        and part:IsA("BasePart") then
+
+        return part.Position.Y
+            + part.Size.Y / 2
+    end
+
+    return hitPosition.Y
+end
+
+--==========================================================
+-- DIRECT TELEPORT
+--==========================================================
+
+local function teleportToJobPoint(target)
+
+    if not target
+        or not target.Parent then
+
+        return false
+    end
+
+    local root = getRoot()
+
+    root.CFrame =
+        CFrame.new(
+            target.Position.X,
+            target.Position.Y + 1.5,
+            target.Position.Z
+        )
+        * root.CFrame.Rotation
+
+    RunService.Heartbeat:Wait()
+    RunService.Heartbeat:Wait()
+
+    task.wait(0.1)
+
+    return true
+end
+
+--==========================================================
+-- MOVEMENT
+--==========================================================
+
+local function moveTo(target)
+
+    if not target
+        or not target.Parent then
+
+        return false
+    end
+
+    local root = getRoot()
+    local rayParams = makeRayParams()
+
+    while alive()
+        and running
+        and target.Parent do
+
+        root = getRoot()
+
+        local horizontalDistance =
+            getHorizontalDistance(
+                root.Position,
+                target.Position
+            )
+
+        --==================================================
+        -- WITHIN 30 STUDS
+        -- DIRECT TELEPORT
+        --==================================================
+
+        if horizontalDistance
+            <= DIRECT_TELEPORT_DISTANCE then
+
+            return teleportToJobPoint(
+                target
+            )
+        end
+
+        local difference =
+            target.Position
+            - root.Position
+
+        local distance =
+            difference.Magnitude
+
+        if distance <= 0.01 then
+
+            return teleportToJobPoint(
+                target
+            )
+        end
+
+        local dt =
+            RunService.Heartbeat:Wait()
+
+        -- Recheck after heartbeat.
+
+        horizontalDistance =
+            getHorizontalDistance(
+                root.Position,
+                target.Position
+            )
+
+        if horizontalDistance
+            <= DIRECT_TELEPORT_DISTANCE then
+
+            return teleportToJobPoint(
+                target
+            )
+        end
+
+        difference =
+            target.Position
+            - root.Position
+
+        distance =
+            difference.Magnitude
+
+        if distance <= 0.01 then
+
+            return teleportToJobPoint(
+                target
+            )
+        end
+
+        local direction =
+            difference.Unit
+
+        local step =
+            math.min(
+                speed * dt,
+                distance
+            )
+
+        --==================================================
+        -- OBSTACLE DETECTION
+        --==================================================
+
+        local checkDistance =
+            math.max(
+                step + 4,
+                LOOK_AHEAD
+            )
+
+        local obstacle =
+            workspace:Raycast(
+                root.Position,
+                direction * checkDistance,
+                rayParams
+            )
+
+        if obstacle then
+
+            local hit =
+                obstacle.Instance
+
+            local topY =
+                getPartTop(
+                    hit,
+                    obstacle.Position
+                )
+
+            local safeY =
+                topY
+                + OBSTACLE_PADDING
+
+            if root.Position.Y < safeY then
+
+                local climbTarget =
+                    Vector3.new(
+                        root.Position.X,
+                        safeY,
+                        root.Position.Z
+                    )
+
+                local climbDifference =
+                    climbTarget
+                    - root.Position
+
+                local climbDistance =
+                    climbDifference.Magnitude
+
+                if climbDistance > 0.05 then
+
+                    local climbStep =
+                        math.min(
+                            speed * dt,
+                            climbDistance
+                        )
+
+                    root.CFrame =
+                        CFrame.new(
+                            root.Position
+                            + climbDifference.Unit
+                            * climbStep
+                        )
+                        * root.CFrame.Rotation
+
+                    continue
+                end
+            end
+        end
+
+        --==================================================
+        -- FORWARD MOVEMENT
+        --==================================================
+
+        local newPosition =
+            root.Position
+            + direction * step
+
+        --==================================================
+        -- GROUND PROTECTION
+        --==================================================
+
+        local ground =
+            workspace:Raycast(
+
+                newPosition
+                + Vector3.new(
+                    0,
+                    6,
+                    0
+                ),
+
+                Vector3.new(
+                    0,
+                    -20,
+                    0
+                ),
+
+                rayParams
+            )
+
+        if ground then
+
+            local minimumY =
+                ground.Position.Y
+                + GROUND_CLEARANCE
+
+            if newPosition.Y
+                < minimumY then
+
+                newPosition =
+                    Vector3.new(
+                        newPosition.X,
+                        minimumY,
+                        newPosition.Z
+                    )
+            end
+        end
+
+        root.CFrame =
+            CFrame.new(newPosition)
+            * root.CFrame.Rotation
+    end
+
+    return false
+end
+
+--==========================================================
+-- PICKUP
+--==========================================================
+
+local function collectPickup(initialPickup)
+
+    local pickup =
+        initialPickup
+
+    for attempt = 1, 5 do
+
+        if not alive()
+            or not running then
+
+            return false
+        end
+
+        if hasFoodBox() then
+            return true
+        end
+
+        local activePickup =
+            getActivePickup()
+
+        if activePickup then
+            pickup = activePickup
+        end
+
+        if not pickup
+            or not pickup.Parent then
+
+            warn(
+                "[FoodDelivery] Pickup disappeared"
+            )
+
+            return false
+        end
+
+        local prompt =
+            pickup:FindFirstChildWhichIsA(
+                "ProximityPrompt",
+                true
+            )
+
+        if not prompt then
+
+            warn(
+                "[FoodDelivery] Pickup prompt missing"
+            )
+
+            return false
+        end
+
+        if not teleportToJobPoint(
+            pickup
+        ) then
+
+            return false
+        end
+
+        local root =
+            getRoot()
+
+        local distance =
+            (
+                root.Position
+                - pickup.Position
+            ).Magnitude
+
+        print(
+            "[FoodDelivery]",
+            "Pickup attempt:",
+            attempt,
+            "| Prompt:",
+            prompt:GetFullName(),
+            "| Action:",
+            prompt.ActionText,
+            "| Object:",
+            prompt.ObjectText,
+            "| Enabled:",
+            prompt.Enabled,
+            "| Distance:",
+            distance,
+            "| Max:",
+            prompt.MaxActivationDistance
+        )
+
+        if prompt.Enabled
+            and distance
+            <= prompt.MaxActivationDistance then
+
+            local success, err =
+                pcall(function()
+
+                    fireproximityprompt(
+                        prompt
+                    )
+                end)
+
+            if not success then
+
+                warn(
+                    "[FoodDelivery] Pickup error:",
+                    err
+                )
+            end
+
+        else
+
+            warn(
+                "[FoodDelivery] Pickup prompt out of range or disabled"
+            )
+        end
+
+        local started =
+            os.clock()
+
+        while alive()
+            and running
+            and os.clock() - started
+            < 1.5 do
+
+            if hasFoodBox() then
+
+                print(
+                    "[FoodDelivery] Food box received"
+                )
+
+                return true
+            end
+
+            task.wait(0.1)
+        end
+
+        task.wait(0.25)
+    end
+
+    return hasFoodBox()
+end
+
+--==========================================================
+-- WAIT FOR DELIVERY
+--==========================================================
+
+local function waitForDelivery(timeout)
+
+    local started =
+        os.clock()
+
+    while alive()
+        and running
+        and os.clock() - started
+        < timeout do
+
+        local delivery =
+            getActiveDelivery()
+
+        if delivery then
+            return delivery
+        end
+
+        task.wait(0.1)
+    end
+
+    return nil
+end
+
+--==========================================================
+-- REPEATED DELIVERY
+-- Keep firing until Food box disappears.
+--==========================================================
+
+local function deliverFood(initialDelivery)
+
+    local delivery =
+        initialDelivery
+
+    local attempt = 0
+
+    while alive()
+        and running
+        and hasFoodBox() do
+
+        attempt = attempt + 1
+
+        --==================================================
+        -- REFRESH DELIVERY POINT
+        --==================================================
+
+        local activeDelivery =
+            getActiveDelivery()
+
+        if activeDelivery then
+            delivery = activeDelivery
+        end
+
+        if not delivery
+            or not delivery.Parent then
+
+            warn(
+                "[FoodDelivery] Delivery point disappeared"
+            )
+
+            task.wait(
+                DELIVERY_RETRY_DELAY
+            )
+
+            continue
+        end
+
+        --==================================================
+        -- FIND PROMPT
+        --==================================================
+
+        local prompt =
+            delivery:FindFirstChildWhichIsA(
+                "ProximityPrompt",
+                true
+            )
+
+        if not prompt then
+
+            warn(
+                "[FoodDelivery] Delivery prompt missing"
+            )
+
+            task.wait(
+                DELIVERY_RETRY_DELAY
+            )
+
+            continue
+        end
+
+        --==================================================
+        -- STAY AT DELIVERY POINT
+        --==================================================
+
+        teleportToJobPoint(
+            delivery
+        )
+
+        -- Food may have disappeared while moving.
+
+        if not hasFoodBox() then
+            return true
+        end
+
+        local root =
+            getRoot()
+
+        local distance =
+            (
+                root.Position
+                - delivery.Position
+            ).Magnitude
+
+        print(
+            "[FoodDelivery]",
+            "Delivery attempt:",
+            attempt,
+            "| Enabled:",
+            prompt.Enabled,
+            "| Distance:",
+            distance,
+            "| Max:",
+            prompt.MaxActivationDistance
+        )
+
+        --==================================================
+        -- FIRE PROMPT
+        --==================================================
+
+        if prompt.Enabled
+            and distance
+            <= prompt.MaxActivationDistance then
+
+            local success, err =
+                pcall(function()
+
+                    fireproximityprompt(
+                        prompt
+                    )
+                end)
+
+            if not success then
+
+                warn(
+                    "[FoodDelivery] Delivery prompt error:",
+                    err
+                )
+            end
+
+        else
+
+            warn(
+                "[FoodDelivery] Delivery prompt unavailable"
+            )
+        end
+
+        --==================================================
+        -- CHECK WHETHER DELIVERY WORKED
+        --==================================================
+
+        local checkStarted =
+            os.clock()
+
+        while alive()
+            and running
+            and os.clock() - checkStarted
+            < DELIVERY_RETRY_DELAY do
+
+            if not hasFoodBox() then
+
+                print(
+                    "[FoodDelivery] Delivery completed on attempt",
+                    attempt
+                )
+
+                return true
+            end
+
+            task.wait(0.1)
+        end
+
+        -- If the box is still there, loop around and
+        -- fire the delivery prompt again.
+    end
+
+    return not hasFoodBox()
+end
+
+--==========================================================
+-- GUI
+--==========================================================
+
+local antiAfkEnabled = false
+local VirtualUser = game:GetService("VirtualUser")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "FoodDeliveryAuto"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+DEV.Gui = gui
+
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.fromOffset(330, 300)
+main.Position = UDim2.new(0.5, -165, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 23)
+main.BorderSizePixel = 0
+main.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = main
+
+--==========================================================
+-- TOP BAR
+--==========================================================
+
+local topBar = Instance.new("Frame")
+topBar.Name = "TopBar"
+topBar.Size = UDim2.new(1, 0, 0, 42)
+topBar.BackgroundColor3 = Color3.fromRGB(27, 27, 31)
+topBar.BorderSizePixel = 0
+topBar.Parent = main
+
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 10)
+topCorner.Parent = topBar
+
+local title = Instance.new("TextLabel")
+title.Position = UDim2.fromOffset(14, 0)
+title.Size = UDim2.new(1, -55, 1, 0)
+title.BackgroundTransparency = 1
+title.Text = "Delivery Autofarm | @zur"
+title.TextColor3 = Color3.fromRGB(240, 240, 240)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Font = Enum.Font.GothamBold
+title.TextSize = 15
+title.Parent = topBar
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(30, 30)
+close.Position = UDim2.new(1, -36, 0, 6)
+close.BackgroundColor3 = Color3.fromRGB(42, 42, 47)
+close.BorderSizePixel = 0
+close.Text = "×"
+close.TextColor3 = Color3.fromRGB(220, 220, 220)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 18
+close.AutoButtonColor = false
+close.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = close
+
+--==========================================================
+-- TABS
+--==========================================================
+
+local tabBar = Instance.new("Frame")
+tabBar.Position = UDim2.fromOffset(10, 48)
+tabBar.Size = UDim2.new(1, -20, 0, 32)
+tabBar.BackgroundTransparency = 1
+tabBar.Parent = main
+
+local function createTabButton(text, x)
+    local button = Instance.new("TextButton")
+    button.Position = UDim2.fromOffset(x, 0)
+    button.Size = UDim2.fromOffset(98, 30)
+    button.BackgroundColor3 = Color3.fromRGB(38, 38, 43)
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(210, 210, 215)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 12
+    button.AutoButtonColor = false
+    button.Parent = tabBar
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = button
+
+    return button
+end
+
+local mainTabButton = createTabButton("Main", 0)
+local settingsTabButton = createTabButton("Settings", 106)
+local creditsTabButton = createTabButton("Credits", 212)
+
+local content = Instance.new("Frame")
+content.Position = UDim2.fromOffset(10, 86)
+content.Size = UDim2.new(1, -20, 1, -96)
+content.BackgroundTransparency = 1
+content.Parent = main
+
+local mainPage = Instance.new("Frame")
+mainPage.Name = "MainPage"
+mainPage.Size = UDim2.fromScale(1, 1)
+mainPage.BackgroundTransparency = 1
+mainPage.Parent = content
+
+local settingsPage = Instance.new("Frame")
+settingsPage.Name = "SettingsPage"
+settingsPage.Size = UDim2.fromScale(1, 1)
+settingsPage.BackgroundTransparency = 1
+settingsPage.Visible = false
+settingsPage.Parent = content
+
+local creditsPage = Instance.new("Frame")
+creditsPage.Name = "CreditsPage"
+creditsPage.Size = UDim2.fromScale(1, 1)
+creditsPage.BackgroundTransparency = 1
+creditsPage.Visible = false
+creditsPage.Parent = content
+
+local function showPage(page)
+    mainPage.Visible = page == mainPage
+    settingsPage.Visible = page == settingsPage
+    creditsPage.Visible = page == creditsPage
+
+    mainTabButton.BackgroundColor3 =
+        page == mainPage and Color3.fromRGB(60, 60, 67) or Color3.fromRGB(38, 38, 43)
+
+    settingsTabButton.BackgroundColor3 =
+        page == settingsPage and Color3.fromRGB(60, 60, 67) or Color3.fromRGB(38, 38, 43)
+
+    creditsTabButton.BackgroundColor3 =
+        page == creditsPage and Color3.fromRGB(60, 60, 67) or Color3.fromRGB(38, 38, 43)
+end
+
+connect(mainTabButton.MouseButton1Click, function()
+    showPage(mainPage)
+end)
+
+connect(settingsTabButton.MouseButton1Click, function()
+    showPage(settingsPage)
+end)
+
+connect(creditsTabButton.MouseButton1Click, function()
+    showPage(creditsPage)
+end)
+
+--==========================================================
+-- BUTTON CREATOR
+--==========================================================
+
+local function createButton(parent, text, position, color)
+    local button = Instance.new("TextButton")
+    button.Position = position
+    button.Size = UDim2.new(1, -20, 0, 38)
+    button.BackgroundColor3 = color
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(240, 240, 240)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 13
+    button.AutoButtonColor = false
+    button.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 7)
+    corner.Parent = button
+
+    return button
+end
+
+--==========================================================
+-- MAIN PAGE
+--==========================================================
+
+local status = Instance.new("TextLabel")
+status.Position = UDim2.fromOffset(10, 4)
+status.Size = UDim2.new(1, -20, 0, 28)
+status.BackgroundTransparency = 1
+status.Text = "Status: Idle"
+status.TextColor3 = Color3.fromRGB(165, 165, 170)
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Font = Enum.Font.Gotham
+status.TextSize = 13
+status.Parent = mainPage
+
+local function setStatus(text)
+    if alive() and status and status.Parent then
+        status.Text = "Status: " .. text
+    end
+end
+
+local completeButton = createButton(
+    mainPage,
+    "Complete One Delivery",
+    UDim2.fromOffset(10, 48),
+    Color3.fromRGB(48, 48, 54)
+)
+
+local autoButton = createButton(
+    mainPage,
+    "Auto Complete: OFF",
+    UDim2.fromOffset(10, 96),
+    Color3.fromRGB(74, 42, 42)
+)
+
+--==========================================================
+-- SETTINGS PAGE
+--==========================================================
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Position = UDim2.fromOffset(10, 5)
+speedLabel.Size = UDim2.new(1, -20, 0, 22)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "CFrame Speed: " .. speed
+speedLabel.TextColor3 = Color3.fromRGB(225, 225, 225)
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Font = Enum.Font.GothamMedium
+speedLabel.TextSize = 13
+speedLabel.Parent = settingsPage
+
+local slider = Instance.new("Frame")
+slider.Position = UDim2.fromOffset(10, 38)
+slider.Size = UDim2.new(1, -20, 0, 8)
+slider.BackgroundColor3 = Color3.fromRGB(48, 48, 53)
+slider.BorderSizePixel = 0
+slider.Parent = settingsPage
+
+local sliderCorner = Instance.new("UICorner")
+sliderCorner.CornerRadius = UDim.new(1, 0)
+sliderCorner.Parent = slider
+
+local fill = Instance.new("Frame")
+fill.Size = UDim2.new(
+    (speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN),
+    0,
+    1,
+    0
+)
+fill.BackgroundColor3 = Color3.fromRGB(205, 205, 210)
+fill.BorderSizePixel = 0
+fill.Parent = slider
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(1, 0)
+fillCorner.Parent = fill
+
+local knob = Instance.new("Frame")
+knob.AnchorPoint = Vector2.new(0.5, 0.5)
+knob.Position = UDim2.new(1, 0, 0.5, 0)
+knob.Size = UDim2.fromOffset(16, 16)
+knob.BackgroundColor3 = Color3.fromRGB(235, 235, 235)
+knob.BorderSizePixel = 0
+knob.Parent = fill
+
+local knobCorner = Instance.new("UICorner")
+knobCorner.CornerRadius = UDim.new(1, 0)
+knobCorner.Parent = knob
+
+local teleportLabel = Instance.new("TextLabel")
+teleportLabel.Position = UDim2.fromOffset(10, 62)
+teleportLabel.Size = UDim2.new(1, -20, 0, 24)
+teleportLabel.BackgroundTransparency = 1
+teleportLabel.Text = "Direct Teleport Distance: " .. DIRECT_TELEPORT_DISTANCE
+teleportLabel.TextColor3 = Color3.fromRGB(180, 180, 185)
+teleportLabel.TextXAlignment = Enum.TextXAlignment.Left
+teleportLabel.Font = Enum.Font.Gotham
+teleportLabel.TextSize = 12
+teleportLabel.Parent = settingsPage
+
+local antiAfkButton = createButton(
+    settingsPage,
+    "Anti AFK: OFF",
+    UDim2.fromOffset(10, 100),
+    Color3.fromRGB(74, 42, 42)
+)
+
+--==========================================================
+-- SPEED SLIDER
+--==========================================================
+
+local draggingSlider = false
+
+local function updateSlider(x)
+    local percentage = math.clamp(
+        (x - slider.AbsolutePosition.X) / slider.AbsoluteSize.X,
+        0,
+        1
+    )
+
+    speed = math.floor(
+        SPEED_MIN
+        + (SPEED_MAX - SPEED_MIN) * percentage
+    )
+
+    fill.Size = UDim2.new(percentage, 0, 1, 0)
+    speedLabel.Text = "CFrame Speed: " .. speed
+end
+
+connect(slider.InputBegan, function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        draggingSlider = true
+        updateSlider(input.Position.X)
+    end
+end)
+
+connect(UIS.InputChanged, function(input)
+    if draggingSlider
+        and input.UserInputType == Enum.UserInputType.MouseMovement then
+
+        updateSlider(input.Position.X)
+    end
+end)
+
+connect(UIS.InputEnded, function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        draggingSlider = false
+    end
+end)
+
+--==========================================================
+-- ANTI AFK
+--==========================================================
+
+connect(antiAfkButton.MouseButton1Click, function()
+    antiAfkEnabled = not antiAfkEnabled
+
+    if antiAfkEnabled then
+        antiAfkButton.Text = "Anti AFK: ON"
+        antiAfkButton.BackgroundColor3 = Color3.fromRGB(42, 76, 50)
+    else
+        antiAfkButton.Text = "Anti AFK: OFF"
+        antiAfkButton.BackgroundColor3 = Color3.fromRGB(74, 42, 42)
+    end
+end)
+
+connect(player.Idled, function()
+    if antiAfkEnabled and alive() then
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new(0, 0))
+        end)
+    end
+end)
+
+--==========================================================
+-- CREDITS PAGE
+--==========================================================
+
+local creditsTitle = Instance.new("TextLabel")
+creditsTitle.Position = UDim2.fromOffset(10, 10)
+creditsTitle.Size = UDim2.new(1, -20, 0, 26)
+creditsTitle.BackgroundTransparency = 1
+creditsTitle.Text = "Credits"
+creditsTitle.TextColor3 = Color3.fromRGB(240, 240, 240)
+creditsTitle.TextXAlignment = Enum.TextXAlignment.Left
+creditsTitle.Font = Enum.Font.GothamBold
+creditsTitle.TextSize = 16
+creditsTitle.Parent = creditsPage
+
+local githubCredit = Instance.new("TextLabel")
+githubCredit.Position = UDim2.fromOffset(10, 52)
+githubCredit.Size = UDim2.new(1, -20, 0, 28)
+githubCredit.BackgroundColor3 = Color3.fromRGB(32, 32, 36)
+githubCredit.BorderSizePixel = 0
+githubCredit.Text = "GitHub: @ic3-gov"
+githubCredit.TextColor3 = Color3.fromRGB(220, 220, 225)
+githubCredit.Font = Enum.Font.GothamBold
+githubCredit.TextSize = 13
+githubCredit.Parent = creditsPage
+
+local githubCorner = Instance.new("UICorner")
+githubCorner.CornerRadius = UDim.new(0, 6)
+githubCorner.Parent = githubCredit
+
+local rscriptsCredit = Instance.new("TextLabel")
+rscriptsCredit.Position = UDim2.fromOffset(10, 90)
+rscriptsCredit.Size = UDim2.new(1, -20, 0, 28)
+rscriptsCredit.BackgroundColor3 = Color3.fromRGB(32, 32, 36)
+rscriptsCredit.BorderSizePixel = 0
+rscriptsCredit.Text = "RScripts: @zur"
+rscriptsCredit.TextColor3 = Color3.fromRGB(220, 220, 225)
+rscriptsCredit.Font = Enum.Font.GothamBold
+rscriptsCredit.TextSize = 12
+rscriptsCredit.Parent = creditsPage
+
+local rscriptsCorner = Instance.new("UICorner")
+rscriptsCorner.CornerRadius = UDim.new(0, 6)
+rscriptsCorner.Parent = rscriptsCredit
+
+--==========================================================
+-- COMPLETE DELIVERY
+--==========================================================
+
+local function completeDelivery()
+
+    if running
+        or not alive() then
+
+        return false
+    end
+
+    running = true
+
+    if hasFoodBox() then
+
+        local box =
+            getFoodBox()
+
+        setStatus(
+            "Food box found, skipping pickup"
+        )
+
+        print(
+            "[FoodDelivery] Existing Food box:",
+            box
+            and box:GetFullName()
+        )
+
+    else
+
+        setStatus(
+            "Finding pickup..."
+        )
+
+        local pickup =
+            getActivePickup()
+
+        if not pickup then
+
+            setStatus(
+                "No active pickup"
+            )
+
+            running = false
+
+            return false
+        end
+
+        setStatus(
+            "Going to pickup..."
+        )
+
+        if not moveTo(
+            pickup
+        ) then
+
+            running = false
+
+            return false
+        end
+
+        setStatus(
+            "Collecting food..."
+        )
+
+        if not collectPickup(
+            pickup
+        ) then
+
+            setStatus(
+                "Pickup failed after 5 attempts"
+            )
+
+            running = false
+
+            return false
+        end
+
+        setStatus(
+            "Food box received"
+        )
+    end
+
+    setStatus(
+        "Finding delivery..."
+    )
+
+    local delivery =
+        waitForDelivery(10)
+
+    if not delivery then
+
+        setStatus(
+            "No active delivery"
+        )
+
+        running = false
+
+        return false
+    end
+
+    setStatus(
+        "Going to delivery..."
+    )
+
+    if not moveTo(
+        delivery
+    ) then
+
+        running = false
+
+        return false
+    end
+
+    if not hasFoodBox() then
+
+        setStatus(
+            "Food box missing"
+        )
+
+        running = false
+
+        return false
+    end
+
+    setStatus(
+        "Delivering..."
+    )
+
+    if not deliverFood(
+        delivery
+    ) then
+
+        setStatus(
+            "Delivery stopped"
+        )
+
+        running = false
+
+        return false
+    end
+
+    setStatus(
+        "Complete"
+    )
+
+    running = false
+
+    return true
+end
+
+--==========================================================
+-- COMPLETE ONE
+--==========================================================
+
+connect(completeButton.MouseButton1Click, function()
+    if not running then
+        task.spawn(completeDelivery)
+    end
+end)
+
+--==========================================================
+-- AUTO COMPLETE
+--==========================================================
+
+connect(autoButton.MouseButton1Click, function()
+
+    autoEnabled = not autoEnabled
+
+    if autoEnabled then
+
+        autoButton.Text =
+            "Auto Complete: ON"
+
+        autoButton.BackgroundColor3 =
+            Color3.fromRGB(
+                42,
+                76,
+                50
+            )
+
+        task.spawn(function()
+
+            while alive()
+                and autoEnabled do
+
+                if not running then
+
+                    if hasFoodBox()
+                        or getActivePickup() then
+
+                        completeDelivery()
+
+                        if alive()
+                            and autoEnabled then
+
+                            setStatus(
+                                "Waiting for next job..."
+                            )
+
+                            task.wait(
+                                0.75
+                            )
+                        end
+
+                    else
+
+                        setStatus(
+                            "Waiting for pickup..."
+                        )
+
+                        task.wait(
+                            0.25
+                        )
+                    end
+
+                else
+
+                    task.wait(
+                        0.1
+                    )
+                end
+            end
+        end)
+
+    else
+
+        autoButton.Text =
+            "Auto Complete: OFF"
+
+        autoButton.BackgroundColor3 =
+            Color3.fromRGB(
+                74,
+                42,
+                42
+            )
+
+        running = false
+
+        setStatus(
+            "Stopped"
+        )
+    end
+end)
+
+--==========================================================
+-- CLOSE
+--==========================================================
+
+connect(close.MouseButton1Click, function()
+
+    antiAfkEnabled = false
+    autoEnabled = false
+    running = false
+    DEV.Killed = true
+
+    for _, connection in ipairs(
+        DEV.Connections
+    ) do
+
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end
+
+    gui:Destroy()
+end)
+
+--==========================================================
+-- WINDOW DRAGGING
+--==========================================================
+
+local draggingWindow = false
+local dragStart
+local startPosition
+
+connect(topBar.InputBegan, function(input)
+
+    if input.UserInputType
+        == Enum.UserInputType.MouseButton1 then
+
+        draggingWindow = true
+        dragStart = input.Position
+        startPosition = main.Position
+    end
+end)
+
+connect(UIS.InputChanged, function(input)
+
+    if draggingWindow
+        and input.UserInputType
+        == Enum.UserInputType.MouseMovement then
+
+        local delta =
+            input.Position
+            - dragStart
+
+        main.Position =
+            UDim2.new(
+                startPosition.X.Scale,
+                startPosition.X.Offset + delta.X,
+                startPosition.Y.Scale,
+                startPosition.Y.Offset + delta.Y
+            )
+    end
+end)
+
+connect(UIS.InputEnded, function(input)
+
+    if input.UserInputType
+        == Enum.UserInputType.MouseButton1 then
+
+        draggingWindow = false
+    end
+end)
+
+--==========================================================
+-- READY
+--==========================================================
+
+showPage(mainPage)
+setStatus("Idle")
