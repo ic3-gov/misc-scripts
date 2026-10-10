@@ -1,0 +1,2043 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local Lighting = game:GetService("Lighting")
+
+local captureOk, CaptureService = pcall(game.GetService, game, "CaptureService")
+if not captureOk then
+	CaptureService = nil
+end
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+-- Prefer CoreGui when running in an environment that permits it.
+-- Ordinary LocalScripts cannot parent to CoreGui, so fall back safely.
+local guiParent = playerGui
+local coreOk, core = pcall(function() return game:GetService("CoreGui") end)
+if coreOk and core then
+    local probe = Instance.new("Folder")
+    probe.Name = "FreecamParentProbe"
+    local allowed = pcall(function() probe.Parent = core end)
+    probe:Destroy()
+    if allowed then guiParent = core end
+end
+local camera = workspace.CurrentCamera
+
+local isTouch = UserInputService.TouchEnabled
+local hasKeyboard = UserInputService.KeyboardEnabled
+local DEG = utf8.char(176)
+
+--------------------------------------------------------------------------------
+-- CONFIG
+--------------------------------------------------------------------------------
+local KEYS = {
+	Toggle = Enum.KeyCode.P,
+	HideUI = Enum.KeyCode.H,
+	Grid = Enum.KeyCode.G,
+	DepthOfField = Enum.KeyCode.B,
+	Screenshot = Enum.KeyCode.F,
+	ResetLens = Enum.KeyCode.X,
+
+	Forward = Enum.KeyCode.W,
+	Backward = Enum.KeyCode.S,
+	Left = Enum.KeyCode.A,
+	Right = Enum.KeyCode.D,
+	Up = Enum.KeyCode.E,
+	UpAlt = Enum.KeyCode.Space,
+	Down = Enum.KeyCode.Q,
+
+	Fast = Enum.KeyCode.LeftShift,
+	FastAlt = Enum.KeyCode.RightShift,
+	Slow = Enum.KeyCode.LeftControl,
+	SpeedUp = Enum.KeyCode.RightBracket,
+	SpeedDown = Enum.KeyCode.LeftBracket,
+	ZoomIn = Enum.KeyCode.Equals,
+	ZoomOut = Enum.KeyCode.Minus,
+	RollLeft = Enum.KeyCode.Z,
+	RollRight = Enum.KeyCode.C,
+}
+
+local CONFIG = {
+	ShowLauncher = true, -- small "Freecam" button when freecam is off
+	HideGameUI = true, -- "Hide UI" also hides the game's own GUIs + Roblox CoreGui
+	GamepadToggle = Enum.KeyCode.ButtonSelect,
+
+	SpeedMin = 0.5,
+	SpeedMax = 500,
+	SpeedDefault = 32,
+	FastMultiplier = 3.5,
+	SlowMultiplier = 0.2,
+
+	FovMin = 2,
+	FovMax = 120,
+	ZoomPerScroll = 0.9, -- FOV multiplier per scroll notch
+
+	SmoothnessDefault = 0.55, -- 0 = instant, 1 = very floaty
+	SensitivityDefault = 1,
+	MouseRadPerPixel = 0.0045,
+	TouchRadPerPixel = 0.006,
+	StickLookSpeed = 2.4, -- radians / second at full deflection
+	StickDeadzone = 0.15,
+	JoystickRadius = 60, -- mobile floating joystick
+}
+
+local THEME = {
+	Background = Color3.fromRGB(15, 16, 22),
+	Surface = Color3.fromRGB(30, 32, 43),
+	SurfaceHover = Color3.fromRGB(44, 47, 62),
+	Stroke = Color3.fromRGB(62, 66, 86),
+	Accent = Color3.fromRGB(104, 140, 255),
+	AccentHover = Color3.fromRGB(131, 162, 255),
+	Text = Color3.fromRGB(238, 240, 248),
+	Subtext = Color3.fromRGB(144, 150, 174),
+	Font = Enum.Font.GothamMedium,
+	FontBold = Enum.Font.GothamBold,
+}
+
+local GRID_MODES = {
+	{ name = "Off", v = {}, h = {} },
+	{ name = "Thirds", v = { 1 / 3, 2 / 3 }, h = { 1 / 3, 2 / 3 } },
+	{ name = "Golden ratio", v = { 0.382, 0.618 }, h = { 0.382, 0.618 } },
+	{ name = "Center", v = { 0.5 }, h = { 0.5 } },
+	{ name = "Quarters", v = { 0.25, 0.5, 0.75 }, h = { 0.25, 0.5, 0.75 } },
+}
+
+local MAX_PITCH = math.rad(89)
+local MAX_ROLL = math.rad(180)
+local RENDER_NAME = "FreecamPhotoModeStep"
+local ACTION_NAME = "FreecamPhotoModeKeys"
+
+--------------------------------------------------------------------------------
+-- STATE
+--------------------------------------------------------------------------------
+local state: {[string]: any} = {
+	active = false,
+	uiHidden = false,
+	collapsed = isTouch and not hasKeyboard,
+	looking = false,
+
+	pitch = 0, yaw = 0, roll = 0, -- targets
+	curPitch = 0, curYaw = 0, curRoll = 0, -- smoothed
+	curPos = Vector3.zero,
+	velocity = Vector3.zero,
+
+	baseFov = 70,
+	fovTarget = 70,
+	fovCur = 70,
+
+	speed = CONFIG.SpeedDefault,
+	smoothness = CONFIG.SmoothnessDefault,
+	sensitivity = CONFIG.SensitivityDefault,
+	zoomAwareSens = true,
+
+	gridIndex = 1,
+	hideCharacter = false,
+
+	dofEnabled = false,
+	autoFocus = true,
+	focusDistance = 30,
+	focusCur = 30,
+	blur = 0.6,
+}
+
+type SavedCameraState = {
+    cameraType: any,
+    cframe: CFrame?,
+    fov: number?,
+    subject: Instance?,
+    mouseBehavior: any,
+    mouseIcon: boolean?,
+}
+local saved: SavedCameraState = {} -- camera / input state to restore on exit
+local capturing = false
+local typing = false
+
+-- forward declarations
+local enable, disable
+local setUIHidden, refreshVisibility
+local setSpeed, setFov, setGridMode, setDofEnabled, setHideCharacter
+local resetLens, resetView, takeScreenshot
+local toast, hideToast
+local sliders: {[string]: any} = {}
+local toggles: {[string]: any} = {}
+
+--------------------------------------------------------------------------------
+-- SMALL HELPERS
+--------------------------------------------------------------------------------
+local activeTweens = setmetatable({}, { __mode = "k" })
+
+local function tween(inst, duration, props)
+	local previous = activeTweens[inst]
+	if previous then
+		previous:Cancel()
+	end
+	local t = TweenService:Create(inst, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+	activeTweens[inst] = t
+	t:Play()
+	return t
+end
+
+local function new(class, props, children)
+	local inst = Instance.new(class)
+	local parent
+	for k, v in pairs(props or {}) do
+		if k == "Parent" then
+			parent = v
+		else
+			inst[k] = v
+		end
+	end
+	for _, child in ipairs(children or {}) do
+		child.Parent = inst
+	end
+	if parent then
+		inst.Parent = parent
+	end
+	return inst
+end
+
+local function corner(radius)
+	return new("UICorner", { CornerRadius = UDim.new(0, radius) })
+end
+
+local function stroke(color, thickness, transparency)
+	return new("UIStroke", {
+		Color = color,
+		Thickness = thickness or 1,
+		Transparency = transparency or 0,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+end
+
+local function padding(l, t, r, b)
+	return new("UIPadding", {
+		PaddingLeft = UDim.new(0, l),
+		PaddingTop = UDim.new(0, t),
+		PaddingRight = UDim.new(0, r),
+		PaddingBottom = UDim.new(0, b),
+	})
+end
+
+local function hover(button, normal, over)
+	normal = normal or THEME.Surface
+	over = over or THEME.SurfaceHover
+	button.MouseEnter:Connect(function()
+		tween(button, 0.12, { BackgroundColor3 = over })
+	end)
+	button.MouseLeave:Connect(function()
+		tween(button, 0.12, { BackgroundColor3 = normal })
+	end)
+end
+
+local function isPointerBegin(input)
+	return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+end
+
+--------------------------------------------------------------------------------
+-- GUIS
+--------------------------------------------------------------------------------
+-- Rerunning the script cleans up its previous instance when possible.
+local env = (getgenv and getgenv()) or _G
+if type(env.FreecamPhotoModeCleanup) == "function" then
+    pcall(env.FreecamPhotoModeCleanup)
+end
+local oldGui = guiParent:FindFirstChild("FreecamUI")
+if oldGui then
+	oldGui:Destroy()
+end
+local oldOverlay = guiParent:FindFirstChild("FreecamOverlay")
+if oldOverlay then
+	oldOverlay:Destroy()
+end
+
+-- Full-screen overlay (composition grid). Ignores the inset so it covers everything.
+local overlay = new("ScreenGui", {
+	Name = "FreecamOverlay",
+	ResetOnSpawn = false,
+	IgnoreGuiInset = true,
+	DisplayOrder = 999,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	Parent = guiParent,
+})
+
+local gridFrame = new("Frame", {
+	Name = "Grid",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = overlay,
+})
+
+-- Interactive UI. Inset respected so input coordinates match GUI coordinates.
+local gui = new("ScreenGui", {
+	Name = "FreecamUI",
+	ResetOnSpawn = false,
+	DisplayOrder = 1000,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	Parent = guiParent,
+})
+
+local ownGuis = { [gui] = true, [overlay] = true }
+
+--------------------------------------------------------------------------------
+-- COMPOSITION GRID
+--------------------------------------------------------------------------------
+local function renderGrid()
+	for _, child in ipairs(gridFrame:GetChildren()) do
+		child:Destroy()
+	end
+	local mode = GRID_MODES[state.gridIndex]
+	local white = Color3.new(1, 1, 1)
+	local black = Color3.new(0, 0, 0)
+	for _, f in ipairs(mode.v) do
+		new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(f, 0),
+			Size = UDim2.new(0, 1, 1, 0),
+			BackgroundColor3 = white,
+			BackgroundTransparency = 0.5,
+			BorderSizePixel = 0,
+			Parent = gridFrame,
+		}, { stroke(black, 1, 0.78) })
+	end
+	for _, f in ipairs(mode.h) do
+		new("Frame", {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.fromScale(0, f),
+			Size = UDim2.new(1, 0, 0, 1),
+			BackgroundColor3 = white,
+			BackgroundTransparency = 0.5,
+			BorderSizePixel = 0,
+			Parent = gridFrame,
+		}, { stroke(black, 1, 0.78) })
+	end
+end
+
+--------------------------------------------------------------------------------
+-- TOAST (small status pill at the bottom)
+--------------------------------------------------------------------------------
+local toastFrame = new("Frame", {
+	Name = "Toast",
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -28),
+	Size = UDim2.fromOffset(0, 36),
+	AutomaticSize = Enum.AutomaticSize.X,
+	BackgroundColor3 = THEME.Background,
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	Parent = gui,
+}, { corner(18), padding(16, 0, 16, 0) })
+
+local toastStroke = stroke(THEME.Stroke, 1, 1)
+toastStroke.Parent = toastFrame
+
+local toastLabel = new("TextLabel", {
+	Size = UDim2.fromOffset(0, 36),
+	AutomaticSize = Enum.AutomaticSize.X,
+	BackgroundTransparency = 1,
+	Text = "",
+	Font = THEME.Font,
+	TextSize = 14,
+	TextColor3 = THEME.Text,
+	TextTransparency = 1,
+	Parent = toastFrame,
+})
+
+local toastVisible = false
+local toastExpire = 0
+
+function hideToast(instant)
+	toastVisible = false
+	if instant then
+		activeTweens[toastFrame] = nil
+		activeTweens[toastLabel] = nil
+		activeTweens[toastStroke] = nil
+		toastFrame.BackgroundTransparency = 1
+		toastLabel.TextTransparency = 1
+		toastStroke.Transparency = 1
+	else
+		tween(toastFrame, 0.25, { BackgroundTransparency = 1 })
+		tween(toastLabel, 0.25, { TextTransparency = 1 })
+		tween(toastStroke, 0.25, { Transparency = 1 })
+	end
+end
+
+function toast(text, force)
+	if state.uiHidden and not force then
+		return
+	end
+	toastLabel.Text = text
+	toastExpire = os.clock() + 1.6
+	if not toastVisible then
+		toastVisible = true
+		tween(toastFrame, 0.18, { BackgroundTransparency = 0.12 })
+		tween(toastLabel, 0.18, { TextTransparency = 0 })
+		tween(toastStroke, 0.18, { Transparency = 0.35 })
+	end
+end
+
+RunService.Heartbeat:Connect(function()
+	if toastVisible and os.clock() > toastExpire then
+		hideToast(false)
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- LAUNCHER BUTTON (visible while freecam is off)
+--------------------------------------------------------------------------------
+local launcher = new("TextButton", {
+	Name = "Launcher",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -12, 0, 12),
+	Size = UDim2.fromOffset(hasKeyboard and 128 or 104, 36),
+	BackgroundColor3 = THEME.Background,
+	BackgroundTransparency = 0.1,
+	AutoButtonColor = false,
+	RichText = true,
+	Text = hasKeyboard
+			and string.format('Freecam   <font color="#%s">%s</font>', THEME.Subtext:ToHex(), KEYS.Toggle.Name)
+		or "Freecam",
+	Font = THEME.FontBold,
+	TextSize = 14,
+	TextColor3 = THEME.Text,
+	Visible = CONFIG.ShowLauncher,
+	Parent = gui,
+}, { corner(18), stroke(THEME.Stroke, 1, 0.2) })
+hover(launcher, THEME.Background, THEME.SurfaceHover)
+
+--------------------------------------------------------------------------------
+-- MAIN PANEL
+--------------------------------------------------------------------------------
+local PANEL_W = 292
+local HEADER_H = 46
+local panelMargin = { right = 12, top = 12 }
+
+local panel = new("Frame", {
+	Name = "Panel",
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -panelMargin.right, 0, panelMargin.top),
+	Size = UDim2.fromOffset(PANEL_W, HEADER_H),
+	BackgroundColor3 = THEME.Background,
+	BackgroundTransparency = 0.05,
+	BorderSizePixel = 0,
+	ClipsDescendants = true,
+	Active = true,
+	Visible = false,
+	Parent = gui,
+}, { corner(14), stroke(THEME.Stroke, 1, 0.2) })
+
+local header = new("Frame", {
+	Name = "Header",
+	Size = UDim2.new(1, 0, 0, HEADER_H),
+	BackgroundTransparency = 1,
+	Parent = panel,
+})
+
+new("Frame", {
+	Name = "Divider",
+	Position = UDim2.new(0, 0, 0, HEADER_H - 1),
+	Size = UDim2.new(1, 0, 0, 1),
+	BackgroundColor3 = THEME.Stroke,
+	BackgroundTransparency = 0.5,
+	BorderSizePixel = 0,
+	Parent = panel,
+})
+
+-- drag handle (title area)
+local dragHandle = new("Frame", {
+	Name = "DragHandle",
+	Size = UDim2.new(1, -110, 1, 0),
+	BackgroundTransparency = 1,
+	Active = true,
+	Parent = header,
+})
+
+new("Frame", {
+	Name = "Dot",
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 16, 0.5, 0),
+	Size = UDim2.fromOffset(8, 8),
+	BackgroundColor3 = THEME.Accent,
+	BorderSizePixel = 0,
+	Parent = dragHandle,
+}, { corner(4) })
+
+new("TextLabel", {
+	Position = UDim2.fromOffset(32, 0),
+	Size = UDim2.new(1, -32, 1, 0),
+	BackgroundTransparency = 1,
+	Text = "FREECAM",
+	Font = THEME.FontBold,
+	TextSize = 14,
+	TextColor3 = THEME.Text,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	Parent = dragHandle,
+})
+
+local function headerButton(text, index)
+	local b = new("TextButton", {
+		Name = "HeaderButton" .. index,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -10 - (index - 1) * 32, 0.5, 0),
+		Size = UDim2.fromOffset(28, 28),
+		BackgroundColor3 = THEME.Surface,
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = text,
+		Font = THEME.FontBold,
+		TextSize = 16,
+		TextColor3 = THEME.Subtext,
+		Parent = header,
+	}, { corner(8) })
+	b.MouseEnter:Connect(function()
+		tween(b, 0.1, { BackgroundTransparency = 0 })
+		b.TextColor3 = THEME.Text
+	end)
+	b.MouseLeave:Connect(function()
+		tween(b, 0.1, { BackgroundTransparency = 1 })
+		b.TextColor3 = THEME.Subtext
+	end)
+	return b
+end
+
+local closeButton = headerButton("×", 1)
+local collapseButton = headerButton(state.collapsed and "+" or "–", 2)
+local helpButton = headerButton("?", 3)
+
+local body = new("ScrollingFrame", {
+	Name = "Body",
+	Position = UDim2.fromOffset(0, HEADER_H),
+	Size = UDim2.new(1, 0, 1, -HEADER_H),
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 3,
+	ScrollBarImageColor3 = THEME.Stroke,
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	CanvasSize = UDim2.new(),
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	Visible = not state.collapsed,
+	Parent = panel,
+})
+
+local bodyLayout = new("UIListLayout", {
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	Padding = UDim.new(0, 6),
+	Parent = body,
+})
+padding(14, 4, 14, 14).Parent = body
+
+local layoutOrder = 0
+local function nextOrder()
+	layoutOrder += 1
+	return layoutOrder
+end
+
+--------------------------------------------------------------------------------
+-- UI COMPONENTS
+--------------------------------------------------------------------------------
+local function section(text)
+	local f = new("Frame", {
+		Name = "Section_" .. text,
+		Size = UDim2.new(1, 0, 0, 26),
+		BackgroundTransparency = 1,
+		LayoutOrder = nextOrder(),
+		Parent = body,
+	})
+	new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = text,
+		Font = THEME.FontBold,
+		TextSize = 11,
+		TextColor3 = THEME.Subtext,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Bottom,
+		Parent = f,
+	})
+end
+
+local function makeSlider(opts)
+	local row = new("Frame", {
+		Name = opts.label,
+		Size = UDim2.new(1, 0, 0, 48),
+		BackgroundTransparency = 1,
+		LayoutOrder = nextOrder(),
+		Parent = body,
+	})
+	local nameLabel = new("TextLabel", {
+		Size = UDim2.new(0.5, 0, 0, 18),
+		BackgroundTransparency = 1,
+		Text = opts.label,
+		Font = THEME.Font,
+		TextSize = 13,
+		TextColor3 = THEME.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = row,
+	})
+	local valueButton = new("TextButton", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.new(0.5, 0, 0, 18),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = "",
+		Font = THEME.Font,
+		TextSize = 12,
+		TextColor3 = THEME.Accent,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Parent = row,
+	})
+	local hit = new("Frame", {
+		Position = UDim2.fromOffset(0, 22),
+		Size = UDim2.new(1, 0, 0, 22),
+		BackgroundTransparency = 1,
+		Active = true,
+		Parent = row,
+	})
+	local track = new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 0, 0.5, 0),
+		Size = UDim2.new(1, 0, 0, 4),
+		BackgroundColor3 = THEME.Surface,
+		BorderSizePixel = 0,
+		Parent = hit,
+	}, { corner(2) })
+	local fill = new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = THEME.Accent,
+		BorderSizePixel = 0,
+		Parent = track,
+	}, { corner(2) })
+	local knob = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
+		Size = UDim2.fromOffset(14, 14),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+		ZIndex = 2,
+		Parent = track,
+	}, { corner(7) })
+
+	local min, max = opts.min, opts.max
+	local value = opts.default
+	local enabled = true
+
+	local function toAlpha(v)
+		if opts.log then
+			return math.log(v / min) / math.log(max / min)
+		end
+		return (v - min) / (max - min)
+	end
+	local function fromAlpha(a)
+		if opts.log then
+			return min * (max / min) ^ a
+		end
+		return min + (max - min) * a
+	end
+	local function render()
+		local a = math.clamp(toAlpha(value), 0, 1)
+		fill.Size = UDim2.fromScale(a, 1)
+		knob.Position = UDim2.fromScale(a, 0.5)
+		valueButton.Text = opts.format(value)
+	end
+
+	local slider = {}
+	function slider:Set(v)
+		value = math.clamp(v, min, max)
+		render()
+	end
+	function slider:Get()
+		return value
+	end
+	function slider:SetEnabled(e)
+		enabled = e
+		nameLabel.TextTransparency = e and 0 or 0.55
+		valueButton.TextTransparency = e and 0 or 0.55
+		fill.BackgroundColor3 = e and THEME.Accent or THEME.Subtext
+		knob.BackgroundTransparency = e and 0 or 0.5
+	end
+
+	local function userSet(v)
+		value = math.clamp(v, min, max)
+		render()
+		opts.onChange(value)
+	end
+
+	local dragging, dragInput = false, nil
+	local function fromPointer(x)
+		local a = math.clamp((x - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1), 0, 1)
+		userSet(fromAlpha(a))
+	end
+
+	hit.InputBegan:Connect(function(input)
+		if enabled and isPointerBegin(input) then
+			dragging = true
+			dragInput = input
+			body.ScrollingEnabled = false
+			tween(knob, 0.1, { Size = UDim2.fromOffset(18, 18) })
+			fromPointer(input.Position.X)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if
+			dragging
+			and (
+				input.UserInputType == Enum.UserInputType.MouseMovement
+				or (input.UserInputType == Enum.UserInputType.Touch and input == dragInput)
+			)
+		then
+			fromPointer(input.Position.X)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input == dragInput) then
+			dragging = false
+			dragInput = nil
+			body.ScrollingEnabled = true
+			tween(knob, 0.1, { Size = UDim2.fromOffset(14, 14) })
+		end
+	end)
+
+	-- click the value to reset to default
+	valueButton.Activated:Connect(function()
+		if enabled then
+			userSet(opts.default)
+		end
+	end)
+
+	slider:Set(opts.default)
+	return slider
+end
+
+local function makeToggle(label, default, onChange)
+	local row = new("TextButton", {
+		Name = label,
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = "",
+		LayoutOrder = nextOrder(),
+		Parent = body,
+	})
+	local nameLabel = new("TextLabel", {
+		Size = UDim2.new(1, -50, 1, 0),
+		BackgroundTransparency = 1,
+		Text = label,
+		Font = THEME.Font,
+		TextSize = 13,
+		TextColor3 = THEME.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = row,
+	})
+	local switch = new("Frame", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.fromOffset(38, 20),
+		BackgroundColor3 = THEME.Surface,
+		BorderSizePixel = 0,
+		Parent = row,
+	}, { corner(10) })
+	local knob = new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 3, 0.5, 0),
+		Size = UDim2.fromOffset(14, 14),
+		BackgroundColor3 = THEME.Subtext,
+		BorderSizePixel = 0,
+		Parent = switch,
+	}, { corner(7) })
+
+	local value = default
+	local enabled = true
+
+	local function render()
+		tween(switch, 0.15, { BackgroundColor3 = value and THEME.Accent or THEME.Surface })
+		tween(knob, 0.15, {
+			Position = value and UDim2.new(1, -17, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+			BackgroundColor3 = value and Color3.new(1, 1, 1) or THEME.Subtext,
+		})
+	end
+
+	local toggle = {}
+	function toggle:Set(v)
+		value = v
+		render()
+	end
+	function toggle:Get()
+		return value
+	end
+	function toggle:SetEnabled(e)
+		enabled = e
+		nameLabel.TextTransparency = e and 0 or 0.55
+		switch.BackgroundTransparency = e and 0 or 0.5
+		knob.BackgroundTransparency = e and 0 or 0.5
+	end
+
+	row.Activated:Connect(function()
+		if not enabled then
+			return
+		end
+		value = not value
+		render()
+		onChange(value)
+	end)
+
+	render()
+	return toggle
+end
+
+local function makeCycle(label, options, onChange)
+	local row = new("Frame", {
+		Name = label,
+		Size = UDim2.new(1, 0, 0, 32),
+		BackgroundTransparency = 1,
+		LayoutOrder = nextOrder(),
+		Parent = body,
+	})
+	new("TextLabel", {
+		Size = UDim2.new(0.4, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Text = label,
+		Font = THEME.Font,
+		TextSize = 13,
+		TextColor3 = THEME.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = row,
+	})
+	local btn = new("TextButton", {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.fromOffset(124, 28),
+		BackgroundColor3 = THEME.Surface,
+		AutoButtonColor = false,
+		Text = "",
+		Font = THEME.Font,
+		TextSize = 13,
+		TextColor3 = THEME.Text,
+		Parent = row,
+	}, { corner(8) })
+	hover(btn)
+
+	local index = 1
+	local obj = {}
+	function obj:Set(i)
+		index = i
+		btn.Text = options[i]
+	end
+	btn.Activated:Connect(function()
+		index = index % #options + 1
+		btn.Text = options[index]
+		onChange(index)
+	end)
+	obj:Set(1)
+	return obj
+end
+
+local function makeButtonRow(buttons)
+	local row = new("Frame", {
+		Size = UDim2.new(1, 0, 0, 34),
+		BackgroundTransparency = 1,
+		LayoutOrder = nextOrder(),
+		Parent = body,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 8),
+		}),
+	})
+	local n = #buttons
+	for i, def in ipairs(buttons) do
+		local normal = def.primary and THEME.Accent or THEME.Surface
+		local over = def.primary and THEME.AccentHover or THEME.SurfaceHover
+		local btn = new("TextButton", {
+			Name = def.text,
+			LayoutOrder = i,
+			Size = UDim2.new(1 / n, -8 * (n - 1) / n, 1, 0),
+			BackgroundColor3 = normal,
+			AutoButtonColor = false,
+			Text = def.text,
+			Font = THEME.Font,
+			TextSize = 13,
+			TextColor3 = THEME.Text,
+			Parent = row,
+		}, { corner(8) })
+		hover(btn, normal, over)
+		btn.Activated:Connect(def.callback)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- BUILD PANEL CONTENT
+--------------------------------------------------------------------------------
+section("CAMERA")
+
+sliders.speed = makeSlider({
+	label = "Speed",
+	min = CONFIG.SpeedMin,
+	max = CONFIG.SpeedMax,
+	default = CONFIG.SpeedDefault,
+	log = true,
+	format = function(v)
+		return string.format("%.1f studs/s", v)
+	end,
+	onChange = function(v)
+		setSpeed(v, true)
+	end,
+})
+
+sliders.fov = makeSlider({
+	label = "Zoom (field of view)",
+	min = CONFIG.FovMin,
+	max = CONFIG.FovMax,
+	default = 70,
+	log = true,
+	format = function(v)
+		return string.format("%.0f%s  (%.1fx)", v, DEG, state.baseFov / v)
+	end,
+	onChange = function(v)
+		setFov(v, true)
+	end,
+})
+
+sliders.roll = makeSlider({
+	label = "Roll",
+	min = -180,
+	max = 180,
+	default = 0,
+	format = function(v)
+		return string.format("%.0f%s", v, DEG)
+	end,
+	onChange = function(v)
+		state.roll = math.rad(v)
+	end,
+})
+
+sliders.smoothness = makeSlider({
+	label = "Smoothness",
+	min = 0,
+	max = 1,
+	default = CONFIG.SmoothnessDefault,
+	format = function(v)
+		return string.format("%d%%", math.floor(v * 100 + 0.5))
+	end,
+	onChange = function(v)
+		state.smoothness = v
+	end,
+})
+
+sliders.sensitivity = makeSlider({
+	label = "Look sensitivity",
+	min = 0.1,
+	max = 3,
+	default = CONFIG.SensitivityDefault,
+	format = function(v)
+		return string.format("%.2fx", v)
+	end,
+	onChange = function(v)
+		state.sensitivity = v
+	end,
+})
+
+toggles.zoomAware = makeToggle("Slower look when zoomed", true, function(v)
+	state.zoomAwareSens = v
+end)
+
+section("COMPOSITION")
+
+local gridCycle = makeCycle("Grid overlay", (function()
+	local names = {}
+	for i, m in ipairs(GRID_MODES) do
+		names[i] = m.name
+	end
+	return names
+end)(), function(i)
+	setGridMode(i, false)
+end)
+
+toggles.hideChar = makeToggle("Hide my character", false, function(v)
+	setHideCharacter(v)
+end)
+
+section("DEPTH OF FIELD")
+
+toggles.dof = makeToggle("Depth of field", false, function(v)
+	setDofEnabled(v)
+end)
+
+toggles.autofocus = makeToggle("Autofocus", true, function(v)
+	state.autoFocus = v
+	sliders.focus:SetEnabled(state.dofEnabled and not v)
+end)
+
+sliders.focus = makeSlider({
+	label = "Focus distance",
+	min = 1,
+	max = 1000,
+	default = 30,
+	log = true,
+	format = function(v)
+		return string.format("%.0f studs", v)
+	end,
+	onChange = function(v)
+		state.focusDistance = v
+		state.focusCur = v
+	end,
+})
+
+sliders.blur = makeSlider({
+	label = "Blur strength",
+	min = 0,
+	max = 1,
+	default = 0.6,
+	format = function(v)
+		return string.format("%d%%", math.floor(v * 100 + 0.5))
+	end,
+	onChange = function(v)
+		state.blur = v
+	end,
+})
+
+local function refreshDofRows()
+	toggles.autofocus:SetEnabled(state.dofEnabled)
+	sliders.focus:SetEnabled(state.dofEnabled and not state.autoFocus)
+	sliders.blur:SetEnabled(state.dofEnabled)
+end
+refreshDofRows()
+
+section("ACTIONS")
+
+makeButtonRow({
+	{
+		text = hasKeyboard and ("Hide UI  (" .. KEYS.HideUI.Name .. ")") or "Hide UI",
+		primary = true,
+		callback = function()
+			setUIHidden(true)
+		end,
+	},
+	{
+		text = hasKeyboard and ("Screenshot  (" .. KEYS.Screenshot.Name .. ")") or "Screenshot",
+		callback = function()
+			takeScreenshot()
+		end,
+	},
+})
+
+makeButtonRow({
+	{
+		text = "Reset lens",
+		callback = function()
+			resetLens()
+		end,
+	},
+	{
+		text = "Back to start",
+		callback = function()
+			resetView()
+		end,
+	},
+})
+
+-- help / controls card
+local helpFrame = new("Frame", {
+	Name = "Help",
+	Size = UDim2.new(1, 0, 0, 0),
+	AutomaticSize = Enum.AutomaticSize.Y,
+	BackgroundColor3 = THEME.Surface,
+	BackgroundTransparency = 0.3,
+	BorderSizePixel = 0,
+	Visible = false,
+	LayoutOrder = nextOrder(),
+	Parent = body,
+}, { corner(8), padding(10, 8, 10, 8) })
+
+do
+	local function k(text)
+		return string.format('<font color="#%s"><b>%s</b></font>', THEME.Accent:ToHex(), text)
+	end
+	local lines = {
+		k("W A S D") .. "  move",
+		k("E / Space") .. "  up      " .. k("Q") .. "  down",
+		k("Right-click + drag") .. "  look",
+		k("Scroll  or  + / -") .. "  zoom",
+		k("[  /  ]") .. "  speed down / up",
+		k("Shift") .. "  boost      " .. k("Ctrl") .. "  precision",
+		k("Z / C") .. "  roll      " .. k("X") .. "  reset lens",
+		k("G") .. "  grid      " .. k("B") .. "  depth of field",
+		k("F") .. "  screenshot",
+		k("H") .. "  hide / show all UI",
+		k(KEYS.Toggle.Name) .. "  exit freecam",
+		'<font color="#' .. THEME.Subtext:ToHex() .. '">Tip: click a slider value to reset it.</font>',
+	}
+	new("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		RichText = true,
+		TextWrapped = true,
+		Text = table.concat(lines, "\n"),
+		Font = THEME.Font,
+		TextSize = 12,
+		LineHeight = 1.25,
+		TextColor3 = THEME.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Parent = helpFrame,
+	})
+end
+
+--------------------------------------------------------------------------------
+-- PANEL SIZING / DRAGGING / COLLAPSE
+--------------------------------------------------------------------------------
+local function refreshPanelSize()
+	local maxH = math.max(HEADER_H + 80, gui.AbsoluteSize.Y - panelMargin.top - 12)
+	local contentH = bodyLayout.AbsoluteContentSize.Y + 18
+	local h = state.collapsed and HEADER_H or math.min(HEADER_H + contentH, maxH)
+	tween(panel, 0.2, { Size = UDim2.fromOffset(PANEL_W, h) })
+end
+
+bodyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshPanelSize)
+gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(refreshPanelSize)
+
+collapseButton.Activated:Connect(function()
+	state.collapsed = not state.collapsed
+	collapseButton.Text = state.collapsed and "+" or "–"
+	body.Visible = not state.collapsed
+	refreshPanelSize()
+end)
+
+helpButton.Activated:Connect(function()
+	helpFrame.Visible = not helpFrame.Visible
+	if state.collapsed then
+		state.collapsed = false
+		collapseButton.Text = "–"
+		body.Visible = true
+	end
+	if helpFrame.Visible then
+		task.defer(function()
+			body.CanvasPosition = Vector2.new(0, body.AbsoluteCanvasSize.Y)
+		end)
+	end
+	refreshPanelSize()
+end)
+
+closeButton.Activated:Connect(function()
+	disable()
+end)
+
+do
+	local dragging, dragInput, dragStart, startRight, startTop = false, nil, Vector2.zero, 0, 0
+	dragHandle.InputBegan:Connect(function(input)
+		if isPointerBegin(input) then
+			dragging = true
+			dragInput = input
+			dragStart = Vector2.new(input.Position.X, input.Position.Y)
+			startRight = panelMargin.right
+			startTop = panelMargin.top
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if
+			dragging
+			and (
+				input.UserInputType == Enum.UserInputType.MouseMovement
+				or (input.UserInputType == Enum.UserInputType.Touch and input == dragInput)
+			)
+		then
+			local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
+			local screen = gui.AbsoluteSize
+			local size = panel.AbsoluteSize
+			panelMargin.right = math.clamp(startRight - delta.X, 0, math.max(screen.X - size.X, 0))
+			panelMargin.top = math.clamp(startTop + delta.Y, 0, math.max(screen.Y - size.Y, 0))
+			panel.Position = UDim2.new(1, -panelMargin.right, 0, panelMargin.top)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input == dragInput) then
+			dragging = false
+			dragInput = nil
+			refreshPanelSize()
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- TOUCH CONTROLS (visuals)
+--------------------------------------------------------------------------------
+local mobileUp, mobileDown = false, false
+local joyTouch, joyOrigin, joyVec = nil, Vector2.zero, Vector2.zero
+local lookTouches, pinchPrev = {}, nil
+
+local touchControls = new("Frame", {
+	Name = "TouchControls",
+	Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1,
+	Visible = false,
+	Parent = gui,
+})
+
+local function holdButton(text, yOffset, setter)
+	local b = new("TextButton", {
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -24, 1, yOffset),
+		Size = UDim2.fromOffset(56, 56),
+		BackgroundColor3 = THEME.Background,
+		BackgroundTransparency = 0.25,
+		AutoButtonColor = false,
+		Text = text,
+		Font = THEME.FontBold,
+		TextSize = 20,
+		TextColor3 = THEME.Text,
+		Parent = touchControls,
+	}, { corner(28), stroke(THEME.Stroke, 1, 0.2) })
+	b.InputBegan:Connect(function(input)
+		if isPointerBegin(input) then
+			setter(true)
+			tween(b, 0.08, { BackgroundTransparency = 0 })
+		end
+	end)
+	b.InputEnded:Connect(function(input)
+		if isPointerBegin(input) then
+			setter(false)
+			tween(b, 0.12, { BackgroundTransparency = 0.25 })
+		end
+	end)
+	return b
+end
+
+holdButton("▲", -110, function(v)
+	mobileUp = v
+end)
+holdButton("▼", -40, function(v)
+	mobileDown = v
+end)
+
+local joyBase = new("Frame", {
+	Name = "JoyBase",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Size = UDim2.fromOffset(CONFIG.JoystickRadius * 2, CONFIG.JoystickRadius * 2),
+	BackgroundColor3 = Color3.new(1, 1, 1),
+	BackgroundTransparency = 0.88,
+	Visible = false,
+	Parent = gui,
+}, { corner(CONFIG.JoystickRadius), stroke(Color3.new(1, 1, 1), 2, 0.6) })
+
+local joyKnob = new("Frame", {
+	Name = "JoyKnob",
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Size = UDim2.fromOffset(46, 46),
+	BackgroundColor3 = Color3.new(1, 1, 1),
+	BackgroundTransparency = 0.45,
+	Visible = false,
+	Parent = gui,
+}, { corner(23) })
+
+-- faint button that brings the UI back on touch devices while it is hidden
+local ghostButton = new("TextButton", {
+	Name = "RestoreUI",
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 8, 1, -8),
+	Size = UDim2.fromOffset(46, 46),
+	BackgroundColor3 = Color3.new(1, 1, 1),
+	BackgroundTransparency = 0.93,
+	AutoButtonColor = false,
+	Text = "UI",
+	Font = THEME.FontBold,
+	TextSize = 13,
+	TextColor3 = Color3.new(1, 1, 1),
+	TextTransparency = 0.7,
+	Visible = false,
+	Parent = gui,
+}, { corner(23) })
+ghostButton.Activated:Connect(function()
+	setUIHidden(false)
+end)
+
+local function hideJoystickVisuals()
+	joyBase.Visible = false
+	joyKnob.Visible = false
+end
+
+--------------------------------------------------------------------------------
+-- VISIBILITY
+--------------------------------------------------------------------------------
+function refreshVisibility()
+	local active, hidden = state.active, state.uiHidden
+	panel.Visible = active and not hidden
+	launcher.Visible = CONFIG.ShowLauncher and not active
+	gridFrame.Visible = active and not hidden and state.gridIndex > 1
+	touchControls.Visible = active and not hidden and isTouch
+	ghostButton.Visible = active and hidden and isTouch
+	if hidden or not active then
+		hideJoystickVisuals()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- HIDE UI  (our UI + the game's GUIs + Roblox CoreGui)
+--------------------------------------------------------------------------------
+local hiddenGuis = {}
+local hiddenCore = {}
+local hiddenTopbar = false
+local gameGuiConn
+
+local function hideGameUI()
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child:IsA("ScreenGui") and not ownGuis[child] and child.Enabled then
+			hiddenGuis[child] = true
+			child.Enabled = false
+		end
+	end
+	gameGuiConn = playerGui.ChildAdded:Connect(function(child)
+		if child:IsA("ScreenGui") and not ownGuis[child] then
+			task.defer(function()
+				if child.Parent and child.Enabled then
+					hiddenGuis[child] = true
+					child.Enabled = false
+				end
+			end)
+		end
+	end)
+
+	for _, coreType in ipairs(Enum.CoreGuiType:GetEnumItems()) do
+		if coreType ~= Enum.CoreGuiType.All then
+			local ok, enabled = pcall(StarterGui.GetCoreGuiEnabled, StarterGui, coreType)
+			if ok and enabled then
+				hiddenCore[coreType] = true
+				pcall(StarterGui.SetCoreGuiEnabled, StarterGui, coreType, false)
+			end
+		end
+	end
+
+	local ok, topbar = pcall(StarterGui.GetCore, StarterGui, "TopbarEnabled")
+	if ok and topbar ~= false then
+		hiddenTopbar = true
+		pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", false)
+	end
+end
+
+local function restoreGameUI()
+	if gameGuiConn then
+		gameGuiConn:Disconnect()
+		gameGuiConn = nil
+	end
+	for g in pairs(hiddenGuis) do
+		if g.Parent then
+			g.Enabled = true
+		end
+	end
+	table.clear(hiddenGuis)
+	for coreType in pairs(hiddenCore) do
+		pcall(StarterGui.SetCoreGuiEnabled, StarterGui, coreType, true)
+	end
+	table.clear(hiddenCore)
+	if hiddenTopbar then
+		hiddenTopbar = false
+		pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", true)
+	end
+end
+
+function setUIHidden(hidden, silent)
+	if hidden == state.uiHidden then
+		return
+	end
+	if hidden and not state.active then
+		return
+	end
+	state.uiHidden = hidden
+	if hidden then
+		hideToast(true)
+		if CONFIG.HideGameUI then
+			hideGameUI()
+		end
+	else
+		if CONFIG.HideGameUI then
+			restoreGameUI()
+		end
+	end
+	refreshVisibility()
+	if hidden and not silent then
+		local hint
+		if hasKeyboard then
+			hint = "press " .. KEYS.HideUI.Name .. " to show it again"
+		elseif isTouch then
+			hint = "tap the bottom-left corner to show it again"
+		else
+			hint = "press Y to show it again"
+		end
+		toast("UI hidden  -  " .. hint, true)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- CHARACTER HIDING (local only)
+--------------------------------------------------------------------------------
+local decalOk = pcall(function()
+	return Instance.new("Decal").LocalTransparencyModifier
+end)
+
+local charParts = {}
+local charConn
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function isTrackable(inst)
+	return inst:IsA("BasePart") or (decalOk and inst:IsA("Decal"))
+end
+
+local function trackCharacter(char)
+	table.clear(charParts)
+	if charConn then
+		charConn:Disconnect()
+		charConn = nil
+	end
+	if not char then
+		rayParams.FilterDescendantsInstances = {}
+		return
+	end
+	for _, d in ipairs(char:GetDescendants()) do
+		if isTrackable(d) then
+			table.insert(charParts, d)
+		end
+	end
+	charConn = char.DescendantAdded:Connect(function(d)
+		if isTrackable(d) then
+			table.insert(charParts, d)
+		end
+	end)
+	rayParams.FilterDescendantsInstances = { char }
+end
+
+local function setCharacterTransparency(value)
+	for i = #charParts, 1, -1 do
+		local p = charParts[i]
+		if p.Parent then
+			p.LocalTransparencyModifier = value
+		else
+			table.remove(charParts, i)
+		end
+	end
+end
+
+function setHideCharacter(enabled)
+	state.hideCharacter = enabled
+	toggles.hideChar:Set(enabled)
+	if not enabled then
+		setCharacterTransparency(0)
+	end
+	toast(enabled and "Character hidden" or "Character visible")
+end
+
+trackCharacter(player.Character)
+player.CharacterAdded:Connect(trackCharacter)
+
+--------------------------------------------------------------------------------
+-- DEPTH OF FIELD
+--------------------------------------------------------------------------------
+local dof
+
+function setDofEnabled(enabled)
+	state.dofEnabled = enabled
+	toggles.dof:Set(enabled)
+	if state.active then
+		if enabled then
+			if not dof then
+				dof = Instance.new("DepthOfFieldEffect")
+				dof.Name = "FreecamDepthOfField"
+				dof.Parent = Lighting
+			end
+			dof.Enabled = true
+		elseif dof then
+			dof.Enabled = false
+		end
+	end
+	refreshDofRows()
+	toast(enabled and "Depth of field on" or "Depth of field off")
+end
+
+--------------------------------------------------------------------------------
+-- SETTERS
+--------------------------------------------------------------------------------
+function setSpeed(v, fromUI)
+	state.speed = math.clamp(v, CONFIG.SpeedMin, CONFIG.SpeedMax)
+	if not fromUI then
+		sliders.speed:Set(state.speed)
+		toast(string.format("Speed  %.1f studs/s", state.speed))
+	end
+end
+
+function setFov(v, fromUI)
+	state.fovTarget = math.clamp(v, CONFIG.FovMin, CONFIG.FovMax)
+	if not fromUI then
+		sliders.fov:Set(state.fovTarget)
+		toast(string.format("Zoom %.1fx  -  FOV %.0f%s", state.baseFov / state.fovTarget, state.fovTarget, DEG))
+	end
+end
+
+function setGridMode(index, silent)
+	state.gridIndex = index
+	gridCycle:Set(index)
+	renderGrid()
+	refreshVisibility()
+	if not silent then
+		toast("Grid: " .. GRID_MODES[index].name)
+	end
+end
+
+function resetLens()
+	setFov(state.baseFov, false)
+	state.roll = 0
+	sliders.roll:Set(0)
+	toast("Lens reset")
+end
+
+function resetView()
+	local cf: CFrame? = saved.cframe
+	if not cf then
+		return
+	end
+	local pitch, yaw = cf:ToEulerAnglesYXZ()
+	state.pitch, state.yaw = pitch, yaw
+	state.curPitch, state.curYaw = pitch, yaw
+	state.curPos = cf.Position
+	state.velocity = Vector3.zero
+	toast("Back to start")
+end
+
+--------------------------------------------------------------------------------
+-- SCREENSHOT  (hides all UI, captures, restores)
+--------------------------------------------------------------------------------
+function takeScreenshot()
+	if capturing or not state.active then
+		return
+	end
+	if not CaptureService then
+		toast("Screenshots aren't available here - use your system's screenshot key", true)
+		return
+	end
+
+	capturing = true
+	local wasHidden = state.uiHidden
+	if not wasHidden then
+		setUIHidden(true, true)
+	end
+	hideToast(true)
+
+	task.spawn(function()
+		local finished = false
+		local function restore()
+			if finished then
+				return
+			end
+			finished = true
+			capturing = false
+			if not wasHidden and state.active then
+				setUIHidden(false, true)
+			end
+		end
+
+		task.delay(5, restore) -- safety net
+		task.wait(0.2) -- let the UI disappear for a couple of frames
+
+		local ok = pcall(function()
+			CaptureService:CaptureScreenshot(function(contentId)
+				restore()
+				local promptOk = pcall(function()
+					CaptureService:PromptSaveCapturesToGallery({ contentId }, function(results)
+						toast(results[contentId] and "Saved to your gallery" or "Screenshot not saved")
+					end)
+				end)
+				if not promptOk then
+					toast("Screenshot captured")
+				end
+			end)
+		end)
+		if not ok then
+			restore()
+			toast("Screenshot failed - try your system's screenshot key", true)
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- PLAYER CONTROLS
+--------------------------------------------------------------------------------
+local function setPlayerControlsEnabled(enabled)
+	local ok, controls = pcall(function()
+		local scripts = player:FindFirstChild("PlayerScripts")
+		local module = scripts and scripts:FindFirstChild("PlayerModule")
+		return module and require(module):GetControls()
+	end)
+	if ok and controls then
+		pcall(function()
+			if enabled then
+				controls:Enable()
+			else
+				controls:Disable()
+			end
+		end)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- LOOK / INPUT HELPERS
+--------------------------------------------------------------------------------
+local function applyLook(dx, dy, radPerUnit)
+	local scale = radPerUnit * state.sensitivity
+	if state.zoomAwareSens then
+		scale *= math.clamp(state.fovCur / 70, 0.03, 2)
+	end
+	state.yaw -= dx * scale
+	state.pitch = math.clamp(state.pitch - dy * scale, -MAX_PITCH, MAX_PITCH)
+end
+
+local function down(key)
+	return UserInputService:IsKeyDown(key)
+end
+
+local function deadzone(pos)
+	local v = Vector2.new(pos.X, pos.Y)
+	local m = v.Magnitude
+	if m < CONFIG.StickDeadzone then
+		return Vector2.zero
+	end
+	return v.Unit * math.min((m - CONFIG.StickDeadzone) / (1 - CONFIG.StickDeadzone), 1)
+end
+
+--------------------------------------------------------------------------------
+-- RENDER STEP
+--------------------------------------------------------------------------------
+local function onStep(dt)
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return
+	end
+	camera = cam
+	dt = math.min(dt, 1 / 15)
+	camera.CameraType = Enum.CameraType.Scriptable
+
+	typing = UserInputService:GetFocusedTextBox() ~= nil
+
+	local mx, my, mz = 0, 0, 0 -- right, up, forward
+	local zoomDir, rollDir, speedDir = 0, 0, 0
+	local boost = 1
+
+	if not typing then
+		if down(KEYS.Forward) then mz += 1 end
+		if down(KEYS.Backward) then mz -= 1 end
+		if down(KEYS.Right) then mx += 1 end
+		if down(KEYS.Left) then mx -= 1 end
+		if down(KEYS.Up) or down(KEYS.UpAlt) then my += 1 end
+		if down(KEYS.Down) then my -= 1 end
+
+		if down(KEYS.RollLeft) then rollDir += 1 end
+		if down(KEYS.RollRight) then rollDir -= 1 end
+		if down(KEYS.ZoomIn) then zoomDir += 1 end
+		if down(KEYS.ZoomOut) then zoomDir -= 1 end
+		if down(KEYS.SpeedUp) then speedDir += 1 end
+		if down(KEYS.SpeedDown) then speedDir -= 1 end
+
+		if down(KEYS.Slow) then
+			boost = CONFIG.SlowMultiplier
+		elseif down(KEYS.Fast) or down(KEYS.FastAlt) then
+			boost = CONFIG.FastMultiplier
+		end
+	end
+
+	-- gamepad
+	if UserInputService.GamepadEnabled then
+		local okState, objs = pcall(UserInputService.GetGamepadState, UserInputService, Enum.UserInputType.Gamepad1)
+		if okState and objs then
+			local lookScale = state.sensitivity
+			if state.zoomAwareSens then
+				lookScale *= math.clamp(state.fovCur / 70, 0.03, 2)
+			end
+			for _, obj in ipairs(objs) do
+				local kc = obj.KeyCode
+				if kc == Enum.KeyCode.Thumbstick1 then
+					local v = deadzone(obj.Position)
+					mx += v.X
+					mz += v.Y
+				elseif kc == Enum.KeyCode.Thumbstick2 then
+					local v = deadzone(obj.Position)
+					state.yaw -= v.X * CONFIG.StickLookSpeed * lookScale * dt
+					state.pitch = math.clamp(state.pitch + v.Y * CONFIG.StickLookSpeed * lookScale * dt, -MAX_PITCH, MAX_PITCH)
+				elseif kc == Enum.KeyCode.ButtonR2 then
+					my += obj.Position.Z
+				elseif kc == Enum.KeyCode.ButtonL2 then
+					my -= obj.Position.Z
+				end
+			end
+		end
+		if UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadUp) then
+			zoomDir += 1
+		end
+		if UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.DPadDown) then
+			zoomDir -= 1
+		end
+	end
+
+	-- touch
+	if isTouch then
+		mx += joyVec.X
+		mz -= joyVec.Y
+		if mobileUp then my += 1 end
+		if mobileDown then my -= 1 end
+	end
+
+	-- continuous adjustments
+	if speedDir ~= 0 then
+		setSpeed(state.speed * math.exp(speedDir * 1.1 * dt), false)
+	end
+	if zoomDir ~= 0 then
+		setFov(state.fovTarget * math.exp(-zoomDir * 0.9 * dt), false)
+	end
+	if rollDir ~= 0 then
+		state.roll = math.clamp(state.roll + rollDir * math.rad(40) * dt, -MAX_ROLL, MAX_ROLL)
+		sliders.roll:Set(math.deg(state.roll))
+	end
+
+	-- mouse look
+	if state.looking then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+		UserInputService.MouseIconEnabled = false
+		local d = UserInputService:GetMouseDelta()
+		applyLook(d.X, d.Y, CONFIG.MouseRadPerPixel)
+	else
+		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		end
+		if not UserInputService.MouseIconEnabled then
+			UserInputService.MouseIconEnabled = true
+		end
+	end
+
+	-- smoothing
+	local rate = 2 + 48 * (1 - state.smoothness) ^ 2
+	local a = 1 - math.exp(-rate * dt)
+
+	state.curYaw += (state.yaw - state.curYaw) * a
+	state.curPitch += (state.pitch - state.curPitch) * a
+	state.curRoll += (state.roll - state.curRoll) * a
+
+	-- movement (relative to the current view direction)
+	local lookCF = CFrame.fromEulerAnglesYXZ(state.curPitch, state.curYaw, 0)
+	local dir = lookCF.RightVector * mx + lookCF.LookVector * mz + Vector3.yAxis * my
+	if dir.Magnitude > 1 then
+		dir = dir.Unit
+	end
+	state.velocity = state.velocity:Lerp(dir * state.speed * boost, a)
+	state.curPos += state.velocity * dt
+
+	-- zoom smoothing
+	state.fovCur += (state.fovTarget - state.fovCur) * (1 - math.exp(-14 * dt))
+
+	local cf = CFrame.new(state.curPos) * CFrame.fromEulerAnglesYXZ(state.curPitch, state.curYaw, state.curRoll)
+	camera.CFrame = cf
+	camera.Focus = cf * CFrame.new(0, 0, -20)
+	camera.FieldOfView = state.fovCur
+
+	-- keep the character hidden (the default camera scripts also touch this)
+	if state.hideCharacter then
+		setCharacterTransparency(1)
+	end
+
+	-- depth of field
+	if dof and state.dofEnabled then
+		local focus = state.focusDistance
+		if state.autoFocus then
+			local result = workspace:Raycast(cf.Position, cf.LookVector * 1500, rayParams)
+			local dist = result and result.Distance or 1500
+			state.focusCur += (dist - state.focusCur) * (1 - math.exp(-7 * dt))
+			focus = state.focusCur
+			if math.abs(sliders.focus:Get() - focus) > 0.5 then
+				sliders.focus:Set(focus)
+			end
+		end
+		dof.FocusDistance = focus
+		dof.InFocusRadius = math.max(1.5, focus * 0.06)
+		dof.FarIntensity = state.blur
+		dof.NearIntensity = state.blur * 0.4
+	end
+end
+
+--------------------------------------------------------------------------------
+-- HOTKEYS WHILE ACTIVE  (ContextActionService so keys are sunk from the game)
+--------------------------------------------------------------------------------
+local function handleHotkey(k)
+	if k == KEYS.Toggle then
+		disable()
+	elseif k == KEYS.HideUI then
+		setUIHidden(not state.uiHidden)
+	elseif k == KEYS.Grid then
+		setGridMode(state.gridIndex % #GRID_MODES + 1, false)
+	elseif k == KEYS.DepthOfField then
+		setDofEnabled(not state.dofEnabled)
+	elseif k == KEYS.Screenshot then
+		takeScreenshot()
+	elseif k == KEYS.ResetLens then
+		resetLens()
+	end
+end
+
+local function onKeyAction(_, inputState, input)
+	if inputState == Enum.UserInputState.Begin then
+		handleHotkey(input.KeyCode)
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+local function collectSinkInputs()
+	local list, seen = {}, {}
+	for _, key in pairs(KEYS) do
+		if not seen[key] then
+			seen[key] = true
+			table.insert(list, key)
+		end
+	end
+	table.insert(list, Enum.KeyCode.Thumbstick1)
+	table.insert(list, Enum.KeyCode.Thumbstick2)
+	return list
+end
+
+--------------------------------------------------------------------------------
+-- ENABLE / DISABLE
+--------------------------------------------------------------------------------
+function enable()
+	if state.active then
+		return
+	end
+	camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	state.active = true
+
+	saved.cameraType = camera.CameraType
+	saved.cframe = camera.CFrame
+	saved.fov = camera.FieldOfView
+	saved.subject = camera.CameraSubject
+	saved.mouseBehavior = UserInputService.MouseBehavior
+	saved.mouseIcon = UserInputService.MouseIconEnabled
+
+	local pitch, yaw = camera.CFrame:ToEulerAnglesYXZ()
+	state.pitch, state.yaw, state.roll = pitch, yaw, 0
+	state.curPitch, state.curYaw, state.curRoll = pitch, yaw, 0
+	state.curPos = camera.CFrame.Position
+	state.velocity = Vector3.zero
+	state.baseFov = camera.FieldOfView
+	state.fovTarget = camera.FieldOfView
+	state.fovCur = camera.FieldOfView
+	state.looking = false
+
+	sliders.fov:Set(state.fovTarget)
+	sliders.roll:Set(0)
+	sliders.speed:Set(state.speed)
+
+	camera.CameraType = Enum.CameraType.Scriptable
+	setPlayerControlsEnabled(false)
+	ContextActionService:BindActionAtPriority(
+		ACTION_NAME,
+		onKeyAction,
+		false,
+		Enum.ContextActionPriority.High.Value,
+		table.unpack(collectSinkInputs())
+	)
+	RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, onStep)
+
+	if state.dofEnabled then
+		dof = Instance.new("DepthOfFieldEffect")
+		dof.Name = "FreecamDepthOfField"
+		dof.Parent = Lighting
+	end
+
+	refreshVisibility()
+	refreshPanelSize()
+
+	local exitHint = hasKeyboard and ("  -  " .. KEYS.Toggle.Name .. " to exit") or ""
+	toast("Freecam on" .. exitHint)
+end
+
+function disable()
+	if not state.active then
+		return
+	end
+
+	-- bring every hidden UI back first
+	setUIHidden(false, true)
+	capturing = false
+
+	state.active = false
+	state.looking = false
+	RunService:UnbindFromRenderStep(RENDER_NAME)
+	ContextActionService:UnbindAction(ACTION_NAME)
+
+	local cam = workspace.CurrentCamera
+	if cam then
+		if saved.cameraType and saved.cameraType.Name == "Scriptable" then
+			cam.CameraType = Enum.CameraType.Scriptable
+			if saved.cframe then cam.CFrame = saved.cframe end
+		else
+			cam.CameraType = saved.cameraType or Enum.CameraType.Custom
+		end
+		local subject: Instance? = saved.subject
+		if not (subject and subject.Parent) then
+			local char = player.Character
+			subject = char and char:FindFirstChildOfClass("Humanoid")
+		end
+		if subject then
+			cam.CameraSubject = subject
+		end
+		cam.FieldOfView = saved.fov or 70
+	end
+
+	UserInputService.MouseBehavior = saved.mouseBehavior or Enum.MouseBehavior.Default
+	UserInputService.MouseIconEnabled = saved.mouseIcon ~= false
+	setPlayerControlsEnabled(true)
+
+	if dof then
+		dof:Destroy()
+		dof = nil
+	end
+	setCharacterTransparency(0)
+
+	-- reset touch state
+	joyTouch, joyVec, pinchPrev = nil, Vector2.zero, nil
+	table.clear(lookTouches)
+	mobileUp, mobileDown = false, false
+
+	refreshVisibility()
+	toast("Freecam off")
+end
+
+--------------------------------------------------------------------------------
+-- INPUT
+--------------------------------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, processed)
+	local t = input.UserInputType
+
+	if t == Enum.UserInputType.Keyboard then
+		if not processed and not state.active and input.KeyCode == KEYS.Toggle then
+			enable()
+		end
+	elseif t == Enum.UserInputType.MouseButton2 then
+		if state.active and not processed then
+			state.looking = true
+		end
+	elseif t == Enum.UserInputType.Touch then
+		if not state.active or processed then
+			return
+		end
+		if not joyTouch and input.Position.X < gui.AbsoluteSize.X * 0.4 then
+			joyTouch = input
+			joyOrigin = Vector2.new(input.Position.X, input.Position.Y)
+			joyVec = Vector2.zero
+			if not state.uiHidden then
+				joyBase.Position = UDim2.fromOffset(joyOrigin.X, joyOrigin.Y)
+				joyKnob.Position = joyBase.Position
+				joyBase.Visible = true
+				joyKnob.Visible = true
+			end
+		else
+			lookTouches[input] = true
+			pinchPrev = nil
+		end
+	elseif t == Enum.UserInputType.Gamepad1 then
+		local kc = input.KeyCode
+		if kc == CONFIG.GamepadToggle then
+			if state.active then
+				disable()
+			else
+				enable()
+			end
+		elseif state.active then
+			if kc == Enum.KeyCode.ButtonR1 then
+				setSpeed(state.speed * 1.25, false)
+			elseif kc == Enum.KeyCode.ButtonL1 then
+				setSpeed(state.speed / 1.25, false)
+			elseif kc == Enum.KeyCode.ButtonY then
+				setUIHidden(not state.uiHidden)
+			elseif kc == Enum.KeyCode.ButtonX then
+				takeScreenshot()
+			end
+		end
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input, processed)
+	local t = input.UserInputType
+	if not state.active then
+		return
+	end
+
+	if t == Enum.UserInputType.MouseWheel then
+		if not processed then
+			setFov(state.fovTarget * CONFIG.ZoomPerScroll ^ input.Position.Z, false)
+		end
+	elseif t == Enum.UserInputType.Touch then
+		if input == joyTouch then
+			local R = CONFIG.JoystickRadius
+			local delta = Vector2.new(input.Position.X, input.Position.Y) - joyOrigin
+			local clamped = delta.Magnitude > R and delta.Unit * R or delta
+			joyVec = clamped / R
+			joyKnob.Position = UDim2.fromOffset(joyOrigin.X + clamped.X, joyOrigin.Y + clamped.Y)
+		elseif lookTouches[input] then
+			local list, count = {}, 0
+			for touch in pairs(lookTouches) do
+				count += 1
+				list[count] = touch
+			end
+			if count == 1 then
+				applyLook(input.Delta.X, input.Delta.Y, CONFIG.TouchRadPerPixel)
+			elseif count >= 2 then
+				local p1 = Vector2.new(list[1].Position.X, list[1].Position.Y)
+				local p2 = Vector2.new(list[2].Position.X, list[2].Position.Y)
+				local dist = (p1 - p2).Magnitude
+				if pinchPrev and dist > 1 then
+					setFov(state.fovTarget * (pinchPrev / dist), false)
+				end
+				pinchPrev = dist
+			end
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	local t = input.UserInputType
+	if t == Enum.UserInputType.MouseButton2 then
+		state.looking = false
+	elseif t == Enum.UserInputType.Touch then
+		if input == joyTouch then
+			joyTouch = nil
+			joyVec = Vector2.zero
+			hideJoystickVisuals()
+		end
+		if lookTouches[input] then
+			lookTouches[input] = nil
+			pinchPrev = nil
+		end
+	end
+end)
+
+UserInputService.WindowFocusReleased:Connect(function()
+	state.looking = false
+	mobileUp, mobileDown = false, false
+end)
+
+launcher.Activated:Connect(enable)
+
+-- Expose a cleanup hook for executor re-execution.
+env.FreecamPhotoModeCleanup = function()
+    if state.active then disable() end
+    pcall(function() RunService:UnbindFromRenderStep(RENDER_NAME) end)
+    pcall(function() ContextActionService:UnbindAction(ACTION_NAME) end)
+    if gui then gui:Destroy() end
+    if overlay then overlay:Destroy() end
+end
+
+-- initial UI state
+setGridMode(1, true)
+refreshVisibility()
+refreshPanelSize()
