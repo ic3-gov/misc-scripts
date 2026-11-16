@@ -1,0 +1,251 @@
+local _47e6de38133d51c1a5 = game:GetService('Players')
+local _321ad47098286e42b6 = game:GetService('UserInputService')
+local _c49bcecc281152d07c = game:GetService('RunService')
+local _020e3ca684dc68d2be = _47e6de38133d51c1a5.LocalPlayer
+local _b229e69f06204a1527 = _G._979d5754218b8bfea2 or _G.GunCameraESP
+local _922186611432e334e8 = _b229e69f06204a1527 and _b229e69f06204a1527.Settings
+if _b229e69f06204a1527 then
+ local _f0b14377c40e4984af = _b229e69f06204a1527._f0788e9e8bdb821691 or _b229e69f06204a1527.Destroy
+ if _f0b14377c40e4984af then _f0b14377c40e4984af(_b229e69f06204a1527) end
+ if _G.GunCameraESP == _b229e69f06204a1527 then _G.GunCameraESP = nil end
+end
+local _a71ae1681fb96a63e3 = {
+ Players = true, Intel = true, Guns = true, Boxes = true, Tint = true, Reticle = true,
+ Color = Color3.fromRGB(70,255,140), IntelColor = Color3.fromRGB(255,199,88), GunColor = Color3.fromRGB(100,190,255),
+ FillTransparency = 0.78, BoxThickness = 0.035,
+ NamesPlayers = true, NamesIntel = true, NamesGuns = true,
+ Toggle = {Kind = 'KeyCode', Name = 'RightShift'},
+}
+if _922186611432e334e8 then for _067020c4dfde28ef8f,_7f509fc9048fccc278 in pairs(_922186611432e334e8) do if _a71ae1681fb96a63e3[_067020c4dfde28ef8f] ~= nil then _a71ae1681fb96a63e3[_067020c4dfde28ef8f] = _7f509fc9048fccc278 end end end
+local _f6b6feee5970c90cb9 = {Settings = _a71ae1681fb96a63e3, Connections = {}, Effects = {}, Alive = true}
+_G._979d5754218b8bfea2 = _f6b6feee5970c90cb9
+local function _4bb79b01bcb955875b(_f93fa0a59a31067909, _232b15ac28743567de)
+ local _2255dcb848650c177a = _f93fa0a59a31067909:Connect(_232b15ac28743567de); table.insert(_f6b6feee5970c90cb9.Connections,_2255dcb848650c177a); return _2255dcb848650c177a
+end
+local function _3adfdbfeed45249b25(_4e20236f747c1b7db8, _4298f5471e166d63be, _1069228d63effbc455)
+ local _fbde7590912317b9fb = Instance.new(_4e20236f747c1b7db8)
+ for _56428b5148764eab2f,_2847528ee382a41cec in pairs(_4298f5471e166d63be) do _fbde7590912317b9fb[_56428b5148764eab2f] = _2847528ee382a41cec end
+ _fbde7590912317b9fb.Parent = _1069228d63effbc455; return _fbde7590912317b9fb
+end
+local _9aa894ede595b952c4 = Color3.fromRGB(70,255,140)
+local _79ff46c636be32515c = Color3.fromRGB(143,163,155)
+local function _a87f87141da729a260(_fbde7590912317b9fb,_eb45a689937daa4fad) _3adfdbfeed45249b25('UICorner',{CornerRadius=UDim.new(0,_eb45a689937daa4fad or 8)},_fbde7590912317b9fb) end
+local _2cc9efff301a48278a = _3adfdbfeed45249b25('ScreenGui',{Name='_11e59ebdbddab975cb',ResetOnSpawn=false,IgnoreGuiInset=true,DisplayOrder=50,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},_020e3ca684dc68d2be:WaitForChild('PlayerGui'))
+_f6b6feee5970c90cb9.Gui = _2cc9efff301a48278a
+local _b81a3284db1f2d8028 = _3adfdbfeed45249b25('Folder',{Name='_95fa2210c6c116a47b'},workspace)
+_f6b6feee5970c90cb9.Folder = _b81a3284db1f2d8028
+function _f6b6feee5970c90cb9._f0788e9e8bdb821691(_9ec50b15605e67dcd4)
+ _9ec50b15605e67dcd4.Alive = false
+ for _,_2255dcb848650c177a in ipairs(_9ec50b15605e67dcd4.Connections) do _2255dcb848650c177a:Disconnect() end
+ for _,_7c6f93ba5a301b9688 in pairs(_9ec50b15605e67dcd4.Effects) do _7c6f93ba5a301b9688.H:Destroy(); _7c6f93ba5a301b9688.B:Destroy(); if _7c6f93ba5a301b9688.N then _7c6f93ba5a301b9688.N:Destroy() end end
+ if _9ec50b15605e67dcd4.Folder then _9ec50b15605e67dcd4.Folder:Destroy() end
+ if _9ec50b15605e67dcd4.Gui then _9ec50b15605e67dcd4.Gui:Destroy() end
+ if _G._979d5754218b8bfea2 == _9ec50b15605e67dcd4 then _G._979d5754218b8bfea2=nil end
+end
+local _c60243d960b18032d1 = _3adfdbfeed45249b25('Frame',{Size=UDim2.fromOffset(430,440),Position=UDim2.fromOffset(70,100),BackgroundColor3=Color3.fromRGB(15,23,22),BorderSizePixel=0,ClipsDescendants=true},_2cc9efff301a48278a)
+_a87f87141da729a260(_c60243d960b18032d1,12)
+_3adfdbfeed45249b25('UIStroke',{Color=Color3.fromRGB(53,80,66),Thickness=1},_c60243d960b18032d1)
+local _5e29eec991561b42d2 = _3adfdbfeed45249b25('Frame',{Size=UDim2.new(1,0,0,52),BackgroundColor3=Color3.fromRGB(23,36,30),BorderSizePixel=0,Active=true},_c60243d960b18032d1)
+_3adfdbfeed45249b25('TextLabel',{Position=UDim2.fromOffset(16,0),Size=UDim2.new(1,-125,1,0),BackgroundTransparency=1,Text='SURVIVE AN AC-130',TextColor3=_9aa894ede595b952c4,Font=Enum.Font.Code,TextSize=16,TextXAlignment=Enum.TextXAlignment.Left},_5e29eec991561b42d2)
+local function _d3053574d8763fed49(_1069228d63effbc455,_c971775f2ee7a08902,_f0aca0ebd14ba55c70,_2227084f0d323917ea)
+ local _6507bee33e737ffbc8=_3adfdbfeed45249b25('TextButton',{Text=_c971775f2ee7a08902,Position=_f0aca0ebd14ba55c70,Size=_2227084f0d323917ea,BackgroundColor3=Color3.fromRGB(30,46,39),TextColor3=_9aa894ede595b952c4,Font=Enum.Font.Code,TextSize=14,BorderSizePixel=0,AutoButtonColor=true},_1069228d63effbc455)
+ _a87f87141da729a260(_6507bee33e737ffbc8,6); return _6507bee33e737ffbc8
+end
+local _e5860d85ea3705498f=_d3053574d8763fed49(_5e29eec991561b42d2,'−',UDim2.new(1,-84,0,12),UDim2.fromOffset(30,28))
+local _d13fb9a00425dc6d57=_d3053574d8763fed49(_5e29eec991561b42d2,'×',UDim2.new(1,-45,0,12),UDim2.fromOffset(30,28))
+local _dc89f9576fb4ba1ad5=_3adfdbfeed45249b25('Frame',{Position=UDim2.fromOffset(14,64),Size=UDim2.new(1,-28,1,-78),BackgroundTransparency=1},_c60243d960b18032d1)
+local _8d088ba7f9228a1738=_3adfdbfeed45249b25('Frame',{Size=UDim2.new(1,0,0,34),BackgroundTransparency=1},_dc89f9576fb4ba1ad5)
+local _b41fa1ffbc99d88885=_d3053574d8763fed49(_8d088ba7f9228a1738,'Players',UDim2.fromOffset(0,0),UDim2.new(1/3,-5,1,0))
+local _4dedc3189f2a2a00e6=_d3053574d8763fed49(_8d088ba7f9228a1738,'Intel ESP',UDim2.new(1/3,2,0,0),UDim2.new(1/3,-5,1,0))
+local _d598fff776a24248d8=_d3053574d8763fed49(_8d088ba7f9228a1738,'Gun ESP',UDim2.new(2/3,4,0,0),UDim2.new(1/3,-4,1,0))
+local _634abd7dc1ce4e336b=_3adfdbfeed45249b25('Frame',{Position=UDim2.fromOffset(0,48),Size=UDim2.new(1,0,1,-104),BackgroundTransparency=1},_dc89f9576fb4ba1ad5)
+local _01ab345667b233bf4a='Players'
+local _5eaf5fa09c59914221={}
+local function _21aee904df02bf508a(_55448ffa2ead5e8d63,_70451a6c361fe4c995,_2cca6b0a96e021e021)
+ local _6507bee33e737ffbc8=_d3053574d8763fed49(_634abd7dc1ce4e336b,'',UDim2.fromOffset(0,_55448ffa2ead5e8d63),UDim2.new(1,0,0,36))
+ _6507bee33e737ffbc8.TextXAlignment=Enum.TextXAlignment.Left
+ _4bb79b01bcb955875b(_6507bee33e737ffbc8.Activated,_2cca6b0a96e021e021)
+ table.insert(_5eaf5fa09c59914221,_6507bee33e737ffbc8); return _6507bee33e737ffbc8
+end
+local _2cb0ff6668217857bd,_ab7be12eddd59e4c73,_027d7d6653b66107c1,_0304d62a73be6325f5,_e26e354e4650f3724c
+local function _b70497405cfcad993b()
+ _2cb0ff6668217857bd.Text='  '..({Players='Player tracking', Intel='Intel tracking', Guns='Gun tracking'})[_01ab345667b233bf4a]..'     '..(_a71ae1681fb96a63e3[_01ab345667b233bf4a] and '[ ON ]' or '[ OFF ]')
+ _ab7be12eddd59e4c73.Text='  Bounding boxes                 '..(_a71ae1681fb96a63e3.Boxes and '[ ON ]' or '[ OFF ]')
+ _027d7d6653b66107c1.Text='  Target color tint              '..(_a71ae1681fb96a63e3.Tint and '[ ON ]' or '[ OFF ]')
+ _0304d62a73be6325f5.Text='  Gun-camera reticle             '..(_a71ae1681fb96a63e3.Reticle and '[ ON ]' or '[ OFF ]')
+ _e26e354e4650f3724c.Text='  Name labels                    '..(_a71ae1681fb96a63e3['Names'.._01ab345667b233bf4a] and '[ ON ]' or '[ OFF ]')
+ _b41fa1ffbc99d88885.BackgroundColor3=_01ab345667b233bf4a=='Players' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
+ _4dedc3189f2a2a00e6.BackgroundColor3=_01ab345667b233bf4a=='Intel' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
+ _d598fff776a24248d8.BackgroundColor3=_01ab345667b233bf4a=='Guns' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
+end
+_2cb0ff6668217857bd=_21aee904df02bf508a(0,'',function() _a71ae1681fb96a63e3[_01ab345667b233bf4a]=not _a71ae1681fb96a63e3[_01ab345667b233bf4a]; _b70497405cfcad993b() end)
+_ab7be12eddd59e4c73=_21aee904df02bf508a(44,'',function() _a71ae1681fb96a63e3.Boxes=not _a71ae1681fb96a63e3.Boxes; _b70497405cfcad993b() end)
+_027d7d6653b66107c1=_21aee904df02bf508a(88,'',function() _a71ae1681fb96a63e3.Tint=not _a71ae1681fb96a63e3.Tint; _b70497405cfcad993b() end)
+_0304d62a73be6325f5=_21aee904df02bf508a(132,'',function() _a71ae1681fb96a63e3.Reticle=not _a71ae1681fb96a63e3.Reticle; _b70497405cfcad993b() end)
+_e26e354e4650f3724c=_21aee904df02bf508a(176,'',function() local _067020c4dfde28ef8f='Names'.._01ab345667b233bf4a; _a71ae1681fb96a63e3[_067020c4dfde28ef8f]=not _a71ae1681fb96a63e3[_067020c4dfde28ef8f]; _b70497405cfcad993b() end)
+_4bb79b01bcb955875b(_b41fa1ffbc99d88885.Activated,function() _01ab345667b233bf4a='Players'; _b70497405cfcad993b() end)
+_4bb79b01bcb955875b(_4dedc3189f2a2a00e6.Activated,function() _01ab345667b233bf4a='Intel'; _b70497405cfcad993b() end)
+_4bb79b01bcb955875b(_d598fff776a24248d8.Activated,function() _01ab345667b233bf4a='Guns'; _b70497405cfcad993b() end)
+local _a4276665cc4625eab5=_3adfdbfeed45249b25('TextLabel',{Position=UDim2.new(0,0,1,-50),Size=UDim2.new(1,0,0,18),BackgroundTransparency=1,TextColor3=_79ff46c636be32515c,Font=Enum.Font.Code,TextSize=12,TextXAlignment=Enum.TextXAlignment.Left,Text='Scanning Workspace.Intel…'},_dc89f9576fb4ba1ad5)
+local _0a8d3034b99d2b866d=_d3053574d8763fed49(_dc89f9576fb4ba1ad5,'',UDim2.new(0,0,1,-26),UDim2.new(1,-18,0,26))
+local _f07fd28bf7eb086bf0=false
+local function _a4312c04f2052676fe() _0a8d3034b99d2b866d.Text='Toggle UI: '.._a71ae1681fb96a63e3.Toggle.Name..'   [change]' end
+_a4312c04f2052676fe(); _b70497405cfcad993b()
+_4bb79b01bcb955875b(_0a8d3034b99d2b866d.Activated,function() _f07fd28bf7eb086bf0=true; _0a8d3034b99d2b866d.Text='Press a key / mouse / gamepad button…' end)
+local _58aabccdfb9ed61d59=_d3053574d8763fed49(_c60243d960b18032d1,'◢',UDim2.new(1,-25,1,-25),UDim2.fromOffset(24,24))
+local _9d7899f1e507091e7f=false
+local _ba98765e672b79e800=_c60243d960b18032d1.Size
+_4bb79b01bcb955875b(_e5860d85ea3705498f.Activated,function()
+ _9d7899f1e507091e7f=not _9d7899f1e507091e7f
+ if _9d7899f1e507091e7f then _ba98765e672b79e800=_c60243d960b18032d1.Size end
+ _dc89f9576fb4ba1ad5.Visible=not _9d7899f1e507091e7f; _58aabccdfb9ed61d59.Visible=not _9d7899f1e507091e7f
+ _c60243d960b18032d1.Size=_9d7899f1e507091e7f and UDim2.new(_ba98765e672b79e800.X.Scale,_ba98765e672b79e800.X.Offset,0,52) or _ba98765e672b79e800
+ _e5860d85ea3705498f.Text=_9d7899f1e507091e7f and '+' or '−'
+end)
+_4bb79b01bcb955875b(_d13fb9a00425dc6d57.Activated,function() _c60243d960b18032d1.Visible=false end)
+
+local _c18293e36c738a5877=_d3053574d8763fed49(_2cc9efff301a48278a,'◉ CAM',UDim2.fromOffset(14,14),UDim2.fromOffset(88,30))
+_4bb79b01bcb955875b(_c18293e36c738a5877.Activated,function() _c60243d960b18032d1.Visible=not _c60243d960b18032d1.Visible end)
+local _7d3163daea96d4a3cb=nil
+local function _be1024a7b3e1c03d55(_3445e1c69f35d197d5,_786ffaeba31b9ff493)
+ if _3445e1c69f35d197d5.UserInputType==Enum.UserInputType.MouseButton1 or _3445e1c69f35d197d5.UserInputType==Enum.UserInputType.Touch then
+  _7d3163daea96d4a3cb={Input=_3445e1c69f35d197d5,Mode=_786ffaeba31b9ff493,Start=Vector2.new(_3445e1c69f35d197d5.Position.X,_3445e1c69f35d197d5.Position.Y),Position=_c60243d960b18032d1.AbsolutePosition,Size=_c60243d960b18032d1.AbsoluteSize}
+ end
+end
+_4bb79b01bcb955875b(_5e29eec991561b42d2.InputBegan,function(_4b1994352bf182d97a) _be1024a7b3e1c03d55(_4b1994352bf182d97a,'drag') end)
+_4bb79b01bcb955875b(_58aabccdfb9ed61d59.InputBegan,function(_4b1994352bf182d97a) _be1024a7b3e1c03d55(_4b1994352bf182d97a,'resize') end)
+_4bb79b01bcb955875b(_321ad47098286e42b6.InputChanged,function(_4b1994352bf182d97a)
+ if not _7d3163daea96d4a3cb then return end
+ if _4b1994352bf182d97a.UserInputType~=Enum.UserInputType.MouseMovement and _4b1994352bf182d97a~=_7d3163daea96d4a3cb.Input then return end
+ local _9a9258c1d1c1586c60=Vector2.new(_4b1994352bf182d97a.Position.X,_4b1994352bf182d97a.Position.Y)-_7d3163daea96d4a3cb.Start
+ local _3e740d66ab2c1859cc=workspace.CurrentCamera; if not _3e740d66ab2c1859cc then return end
+ local _d9adc304308ead4fe2=_3e740d66ab2c1859cc.ViewportSize
+ if _7d3163daea96d4a3cb.Mode=='drag' then
+  local _288fdd6dca0f558c32=_7d3163daea96d4a3cb.Position+_9a9258c1d1c1586c60
+  _c60243d960b18032d1.Position=UDim2.fromOffset(math.clamp(_288fdd6dca0f558c32.X,0,math.max(0,_d9adc304308ead4fe2.X-_c60243d960b18032d1.AbsoluteSize.X)),math.clamp(_288fdd6dca0f558c32.Y,0,math.max(0,_d9adc304308ead4fe2.Y-52)))
+ else
+  local _2227084f0d323917ea=_7d3163daea96d4a3cb.Size+_9a9258c1d1c1586c60
+  _c60243d960b18032d1.Size=UDim2.fromOffset(math.clamp(_2227084f0d323917ea.X,360,math.max(360,_d9adc304308ead4fe2.X-_c60243d960b18032d1.AbsolutePosition.X)),math.clamp(_2227084f0d323917ea.Y,430,math.max(430,_d9adc304308ead4fe2.Y-_c60243d960b18032d1.AbsolutePosition.Y)))
+ end
+end)
+_4bb79b01bcb955875b(_321ad47098286e42b6.InputEnded,function(_4b1994352bf182d97a)
+ if _7d3163daea96d4a3cb and (_4b1994352bf182d97a==_7d3163daea96d4a3cb.Input or _4b1994352bf182d97a.UserInputType==Enum.UserInputType.MouseButton1) then _7d3163daea96d4a3cb=nil end
+end)
+_4bb79b01bcb955875b(_321ad47098286e42b6.InputBegan,function(_4b1994352bf182d97a,processed)
+ if _321ad47098286e42b6:GetFocusedTextBox() then return end
+ if _f07fd28bf7eb086bf0 then
+  if _4b1994352bf182d97a.KeyCode~=Enum.KeyCode.Unknown then _a71ae1681fb96a63e3.Toggle={Kind='KeyCode',Name=_4b1994352bf182d97a.KeyCode.Name}
+  elseif _4b1994352bf182d97a.UserInputType==Enum.UserInputType.MouseButton1 or _4b1994352bf182d97a.UserInputType==Enum.UserInputType.MouseButton2 or _4b1994352bf182d97a.UserInputType==Enum.UserInputType.MouseButton3 then
+   _a71ae1681fb96a63e3.Toggle={Kind='UserInputType',Name=_4b1994352bf182d97a.UserInputType.Name}
+  else return end
+  _f07fd28bf7eb086bf0=false; _a4312c04f2052676fe(); return
+ end
+ if processed then return end
+ local _7f509fc9048fccc278=_a71ae1681fb96a63e3.Toggle.Kind=='KeyCode' and _4b1994352bf182d97a.KeyCode or _4b1994352bf182d97a.UserInputType
+ if _7f509fc9048fccc278.Name==_a71ae1681fb96a63e3.Toggle.Name then _c60243d960b18032d1.Visible=not _c60243d960b18032d1.Visible end
+end)
+local _ef1f5872adb04394ce=_3adfdbfeed45249b25('Frame',{Size=UDim2.fromScale(1,1),BackgroundTransparency=1},_2cc9efff301a48278a)
+for _,_2847528ee382a41cec in ipairs({{20,1,-20,0},{20,1,20,0},{1,20,0,-20},{1,20,0,20}}) do
+ _3adfdbfeed45249b25('Frame',{Size=UDim2.fromOffset(_2847528ee382a41cec[1],_2847528ee382a41cec[2]),Position=UDim2.new(0.5,_2847528ee382a41cec[3],0.5,_2847528ee382a41cec[4]),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=_a71ae1681fb96a63e3.Color,BorderSizePixel=0},_ef1f5872adb04394ce)
+end
+
+local function _e59e1ca3ff1bcbd451(_4164095a82d5180c30,_ff18677b718479313e,_146cd9827c6b78a7f9)
+ if _4164095a82d5180c30:IsA('Model') or _4164095a82d5180c30:IsA('BasePart') then _ff18677b718479313e[_4164095a82d5180c30]=_146cd9827c6b78a7f9; return end
+ for _,_e9671016e0a4da30da in ipairs(_4164095a82d5180c30:GetChildren()) do _e59e1ca3ff1bcbd451(_e9671016e0a4da30da,_ff18677b718479313e,_146cd9827c6b78a7f9) end
+end
+local _e3b013153e39e58695=0
+_4bb79b01bcb955875b(_c49bcecc281152d07c.Heartbeat,function(_6c700ae667ded0783a)
+ _e3b013153e39e58695+=_6c700ae667ded0783a
+ _ef1f5872adb04394ce.Visible=_a71ae1681fb96a63e3.Reticle
+ if _e3b013153e39e58695<0.25 then return end
+ _e3b013153e39e58695=0
+ local _ff18677b718479313e={}
+ for _,_288fdd6dca0f558c32 in ipairs(_47e6de38133d51c1a5:GetPlayers()) do
+  if _288fdd6dca0f558c32~=_020e3ca684dc68d2be and _288fdd6dca0f558c32.Character and _288fdd6dca0f558c32.Character:IsDescendantOf(workspace) then _ff18677b718479313e[_288fdd6dca0f558c32.Character]='Players' end
+ end
+ local _89d6a464e84bc4bc32=workspace:FindFirstChild('Intel')
+ if _89d6a464e84bc4bc32 then _e59e1ca3ff1bcbd451(_89d6a464e84bc4bc32,_ff18677b718479313e,'Intel') end
+ local _c742f041f3ce78d9e1=workspace:FindFirstChild('GunPickups')
+ if _c742f041f3ce78d9e1 then
+
+  for _,_f1b9c4ec697953d8e4 in ipairs(_c742f041f3ce78d9e1:GetChildren()) do _e59e1ca3ff1bcbd451(_f1b9c4ec697953d8e4,_ff18677b718479313e,'Guns') end
+ end
+ local _a577d66333cbc96f15={Players=0,Intel=0,Guns=0}
+ for _,_146cd9827c6b78a7f9 in pairs(_ff18677b718479313e) do _a577d66333cbc96f15[_146cd9827c6b78a7f9]+=1 end
+ local _4164095a82d5180c30=_01ab345667b233bf4a=='Guns' and _c742f041f3ce78d9e1 or _89d6a464e84bc4bc32
+ if _01ab345667b233bf4a=='Players' then
+  _a4276665cc4625eab5.Text='PLAYERS ONLINE  |  '.._a577d66333cbc96f15.Players..' targets'
+ else
+  local _ec845d3829ed11abb7=_01ab345667b233bf4a=='Guns' and 'GunPickups' or 'Intel'
+  _a4276665cc4625eab5.Text=_4164095a82d5180c30 and (_ec845d3829ed11abb7..' ONLINE  |  '.._a577d66333cbc96f15[_01ab345667b233bf4a]..' targets') or ('Waiting for Workspace.'.._ec845d3829ed11abb7)
+ end
+ for _50b752cf72ca2d2791,_7c6f93ba5a301b9688 in pairs(_f6b6feee5970c90cb9.Effects) do
+  if not _ff18677b718479313e[_50b752cf72ca2d2791] then _7c6f93ba5a301b9688.H:Destroy(); _7c6f93ba5a301b9688.B:Destroy(); if _7c6f93ba5a301b9688.N then _7c6f93ba5a301b9688.N:Destroy() end; _f6b6feee5970c90cb9.Effects[_50b752cf72ca2d2791]=nil end
+ end
+ for _50b752cf72ca2d2791,_146cd9827c6b78a7f9 in pairs(_ff18677b718479313e) do
+  local _7c6f93ba5a301b9688=_f6b6feee5970c90cb9.Effects[_50b752cf72ca2d2791]
+  if not _7c6f93ba5a301b9688 then
+   _7c6f93ba5a301b9688={H=_3adfdbfeed45249b25('Highlight',{Adornee=_50b752cf72ca2d2791,DepthMode=Enum.HighlightDepthMode.AlwaysOnTop},_b81a3284db1f2d8028),B=_3adfdbfeed45249b25('SelectionBox',{Adornee=_50b752cf72ca2d2791,SurfaceTransparency=1},_b81a3284db1f2d8028)}
+   _7c6f93ba5a301b9688.N=_3adfdbfeed45249b25('TextLabel',{
+    Name='_9254888aabb6515474',BackgroundTransparency=1,AnchorPoint=Vector2.new(0.5,1),
+    Font=Enum.Font.Code,TextSize=14,TextColor3=_a71ae1681fb96a63e3.Color,
+    TextStrokeColor3=Color3.new(0,0,0),TextStrokeTransparency=0.2,
+    TextScaled=false,TextWrapped=false,TextTruncate=Enum.TextTruncate.AtEnd,
+    Visible=false,ZIndex=0,Size=UDim2.fromOffset(160,22),
+   },_2cc9efff301a48278a)
+   _f6b6feee5970c90cb9.Effects[_50b752cf72ca2d2791]=_7c6f93ba5a301b9688
+  end
+  _7c6f93ba5a301b9688.Kind=_146cd9827c6b78a7f9
+  local _1fffa87c1059c69f4b=_146cd9827c6b78a7f9=='Players' and _47e6de38133d51c1a5:GetPlayerFromCharacter(_50b752cf72ca2d2791)
+  local _bde5e03d54f7627fc6=_50b752cf72ca2d2791:FindFirstAncestorWhichIsA('Tool')
+  _7c6f93ba5a301b9688.N.Text=_1fffa87c1059c69f4b and _1fffa87c1059c69f4b.DisplayName or (_bde5e03d54f7627fc6 and _bde5e03d54f7627fc6.Name or _50b752cf72ca2d2791.Name)
+  local _19315caef369375652=_146cd9827c6b78a7f9=='Guns' and _a71ae1681fb96a63e3.GunColor or (_146cd9827c6b78a7f9=='Intel' and _a71ae1681fb96a63e3.IntelColor or _a71ae1681fb96a63e3.Color)
+  _7c6f93ba5a301b9688.N.TextColor3=_19315caef369375652
+  _7c6f93ba5a301b9688.H.Enabled=_a71ae1681fb96a63e3[_146cd9827c6b78a7f9] and _a71ae1681fb96a63e3.Tint
+  _7c6f93ba5a301b9688.H.FillColor=_19315caef369375652; _7c6f93ba5a301b9688.H.OutlineColor=_19315caef369375652
+  _7c6f93ba5a301b9688.H.FillTransparency=_a71ae1681fb96a63e3.FillTransparency
+  _7c6f93ba5a301b9688.B.Visible=_a71ae1681fb96a63e3[_146cd9827c6b78a7f9] and _a71ae1681fb96a63e3.Boxes
+  _7c6f93ba5a301b9688.B.Color3=_19315caef369375652; _7c6f93ba5a301b9688.B.LineThickness=_a71ae1681fb96a63e3.BoxThickness
+ end
+end)
+
+
+_4bb79b01bcb955875b(_c49bcecc281152d07c.RenderStepped,function()
+ local _3e740d66ab2c1859cc=workspace.CurrentCamera
+ if not _3e740d66ab2c1859cc then
+  for _,_7c6f93ba5a301b9688 in pairs(_f6b6feee5970c90cb9.Effects) do _7c6f93ba5a301b9688.N.Visible=false end
+  return
+ end
+ local _d9adc304308ead4fe2=_3e740d66ab2c1859cc.ViewportSize
+ for _50b752cf72ca2d2791,_7c6f93ba5a301b9688 in pairs(_f6b6feee5970c90cb9.Effects) do
+  local _0f9eb50a1e44da3c9a=_7c6f93ba5a301b9688.N
+  _0f9eb50a1e44da3c9a.Visible=false
+  if _a71ae1681fb96a63e3[_7c6f93ba5a301b9688.Kind] and _a71ae1681fb96a63e3['Names'.._7c6f93ba5a301b9688.Kind] and _50b752cf72ca2d2791:IsDescendantOf(workspace) then
+   local _017d1c06567d9ed5f3,_2227084f0d323917ea
+   if _50b752cf72ca2d2791:IsA('Model') then
+    _017d1c06567d9ed5f3,_2227084f0d323917ea=_50b752cf72ca2d2791:GetBoundingBox()
+   else
+    _017d1c06567d9ed5f3,_2227084f0d323917ea=_50b752cf72ca2d2791.CFrame,_50b752cf72ca2d2791.Size
+   end
+
+   local _684d7c246f5fd4b8d3=(math.abs(_017d1c06567d9ed5f3.RightVector.Y)*_2227084f0d323917ea.X+math.abs(_017d1c06567d9ed5f3.UpVector.Y)*_2227084f0d323917ea.Y+math.abs(_017d1c06567d9ed5f3.LookVector.Y)*_2227084f0d323917ea.Z)*0.5
+   local _8a087b41ce1884890b=_017d1c06567d9ed5f3.Position+Vector3.new(0,_684d7c246f5fd4b8d3+0.35,0)
+   local _e62522b249d19e4e2a,_2f509e6a4eef84bc7d=_3e740d66ab2c1859cc:WorldToViewportPoint(_8a087b41ce1884890b)
+   if _2f509e6a4eef84bc7d and _e62522b249d19e4e2a.Z>0 then
+    local _6f9ba433ab27cd40d2=(_3e740d66ab2c1859cc.CFrame.Position-_017d1c06567d9ed5f3.Position).Magnitude
+    local _447461a201218828f4=math.clamp(_d9adc304308ead4fe2.Y/900,0.75,1)
+    local _6c1549fe9e13d23813=math.floor(math.clamp(16*math.sqrt(40/math.max(_6f9ba433ab27cd40d2,1))*_447461a201218828f4,9,16)+0.5)
+    local _0ca4dd4582d9796173=math.min(200,_d9adc304308ead4fe2.X*0.22,_6c1549fe9e13d23813*13)
+    local _1dd47db532ab3d67a7=_6c1549fe9e13d23813+6
+    local _fbde7590912317b9fb,_55448ffa2ead5e8d63=_e62522b249d19e4e2a.X,_e62522b249d19e4e2a.Y-4
+
+    if _fbde7590912317b9fb-_0ca4dd4582d9796173/2>=4 and _fbde7590912317b9fb+_0ca4dd4582d9796173/2<=_d9adc304308ead4fe2.X-4 and _55448ffa2ead5e8d63-_1dd47db532ab3d67a7>=4 and _55448ffa2ead5e8d63<=_d9adc304308ead4fe2.Y-4 then
+     _0f9eb50a1e44da3c9a.TextSize=_6c1549fe9e13d23813
+     _0f9eb50a1e44da3c9a.Size=UDim2.fromOffset(_0ca4dd4582d9796173,_1dd47db532ab3d67a7)
+     _0f9eb50a1e44da3c9a.Position=UDim2.fromOffset(_fbde7590912317b9fb,_55448ffa2ead5e8d63)
+     _0f9eb50a1e44da3c9a.Visible=true
+    end
+   end
+  end
+ end
+end)
