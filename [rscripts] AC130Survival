@@ -15,8 +15,20 @@ local _a71ae1681fb96a63e3 = {
  FillTransparency = 0.78, BoxThickness = 0.035,
  NamesPlayers = true, NamesIntel = true, NamesGuns = true,
  Toggle = {Kind = 'KeyCode', Name = 'RightShift'},
+ BoxesPlayers=true,BoxesIntel=true,BoxesGuns=true,
+ TintPlayers=true,TintIntel=true,TintGuns=true,
+ FillPlayers=0.78,FillIntel=0.78,FillGuns=0.78,
+ ThicknessPlayers=0.035,ThicknessIntel=0.035,ThicknessGuns=0.035,
+ WalkEnabled=false,JumpEnabled=false,WalkValue=16,JumpValue=50,InfiniteJump=false,
 }
 if _922186611432e334e8 then for _067020c4dfde28ef8f,_7f509fc9048fccc278 in pairs(_922186611432e334e8) do if _a71ae1681fb96a63e3[_067020c4dfde28ef8f] ~= nil then _a71ae1681fb96a63e3[_067020c4dfde28ef8f] = _7f509fc9048fccc278 end end end
+
+for _,_ce137d5d13e309d950 in ipairs({'Players','Intel','Guns'}) do
+ for _,_519ed97018b72b0e20 in ipairs({'Boxes','Tint'}) do
+  local _9a5f631f3e61d19b63=_519ed97018b72b0e20.._ce137d5d13e309d950
+  if _922186611432e334e8 and _922186611432e334e8[_9a5f631f3e61d19b63]==nil then _a71ae1681fb96a63e3[_9a5f631f3e61d19b63]=_922186611432e334e8[_519ed97018b72b0e20]~=false end
+ end
+end
 local _f6b6feee5970c90cb9 = {Settings = _a71ae1681fb96a63e3, Connections = {}, Effects = {}, Alive = true}
 _G._979d5754218b8bfea2 = _f6b6feee5970c90cb9
 local function _4bb79b01bcb955875b(_f93fa0a59a31067909, _232b15ac28743567de)
@@ -36,13 +48,14 @@ local _b81a3284db1f2d8028 = _3adfdbfeed45249b25('Folder',{Name='_95fa2210c6c116a
 _f6b6feee5970c90cb9.Folder = _b81a3284db1f2d8028
 function _f6b6feee5970c90cb9._f0788e9e8bdb821691(_9ec50b15605e67dcd4)
  _9ec50b15605e67dcd4.Alive = false
+ if _9ec50b15605e67dcd4._a1397ec47b6f25d830 then _9ec50b15605e67dcd4._a1397ec47b6f25d830() end
  for _,_2255dcb848650c177a in ipairs(_9ec50b15605e67dcd4.Connections) do _2255dcb848650c177a:Disconnect() end
  for _,_7c6f93ba5a301b9688 in pairs(_9ec50b15605e67dcd4.Effects) do _7c6f93ba5a301b9688.H:Destroy(); _7c6f93ba5a301b9688.B:Destroy(); if _7c6f93ba5a301b9688.N then _7c6f93ba5a301b9688.N:Destroy() end end
  if _9ec50b15605e67dcd4.Folder then _9ec50b15605e67dcd4.Folder:Destroy() end
  if _9ec50b15605e67dcd4.Gui then _9ec50b15605e67dcd4.Gui:Destroy() end
  if _G._979d5754218b8bfea2 == _9ec50b15605e67dcd4 then _G._979d5754218b8bfea2=nil end
 end
-local _c60243d960b18032d1 = _3adfdbfeed45249b25('Frame',{Size=UDim2.fromOffset(430,440),Position=UDim2.fromOffset(70,100),BackgroundColor3=Color3.fromRGB(15,23,22),BorderSizePixel=0,ClipsDescendants=true},_2cc9efff301a48278a)
+local _c60243d960b18032d1 = _3adfdbfeed45249b25('Frame',{Size=UDim2.fromOffset(540,440),Position=UDim2.fromOffset(70,100),BackgroundColor3=Color3.fromRGB(15,23,22),BorderSizePixel=0,ClipsDescendants=true},_2cc9efff301a48278a)
 _a87f87141da729a260(_c60243d960b18032d1,12)
 _3adfdbfeed45249b25('UIStroke',{Color=Color3.fromRGB(53,80,66),Thickness=1},_c60243d960b18032d1)
 local _5e29eec991561b42d2 = _3adfdbfeed45249b25('Frame',{Size=UDim2.new(1,0,0,52),BackgroundColor3=Color3.fromRGB(23,36,30),BorderSizePixel=0,Active=true},_c60243d960b18032d1)
@@ -55,9 +68,12 @@ local _e5860d85ea3705498f=_d3053574d8763fed49(_5e29eec991561b42d2,'−',UDim2.ne
 local _d13fb9a00425dc6d57=_d3053574d8763fed49(_5e29eec991561b42d2,'×',UDim2.new(1,-45,0,12),UDim2.fromOffset(30,28))
 local _dc89f9576fb4ba1ad5=_3adfdbfeed45249b25('Frame',{Position=UDim2.fromOffset(14,64),Size=UDim2.new(1,-28,1,-78),BackgroundTransparency=1},_c60243d960b18032d1)
 local _8d088ba7f9228a1738=_3adfdbfeed45249b25('Frame',{Size=UDim2.new(1,0,0,34),BackgroundTransparency=1},_dc89f9576fb4ba1ad5)
-local _b41fa1ffbc99d88885=_d3053574d8763fed49(_8d088ba7f9228a1738,'Players',UDim2.fromOffset(0,0),UDim2.new(1/3,-5,1,0))
-local _4dedc3189f2a2a00e6=_d3053574d8763fed49(_8d088ba7f9228a1738,'Intel ESP',UDim2.new(1/3,2,0,0),UDim2.new(1/3,-5,1,0))
-local _d598fff776a24248d8=_d3053574d8763fed49(_8d088ba7f9228a1738,'Gun ESP',UDim2.new(2/3,4,0,0),UDim2.new(1/3,-4,1,0))
+local _b41fa1ffbc99d88885=_d3053574d8763fed49(_8d088ba7f9228a1738,'Players',UDim2.fromOffset(0,0),UDim2.new(0.25,-5,1,0))
+local _4dedc3189f2a2a00e6=_d3053574d8763fed49(_8d088ba7f9228a1738,'Intel ESP',UDim2.new(0.25,2,0,0),UDim2.new(0.25,-5,1,0))
+local _d598fff776a24248d8=_d3053574d8763fed49(_8d088ba7f9228a1738,'Gun ESP',UDim2.new(0.5,4,0,0),UDim2.new(0.25,-5,1,0))
+local _5ad023e250a8a74424=_d3053574d8763fed49(_8d088ba7f9228a1738,'Player Options',UDim2.new(0.75,4,0,0),UDim2.new(0.25,-4,1,0))
+local _04cfccb7dcb3d67e6f=_3adfdbfeed45249b25('Frame',{Position=UDim2.fromOffset(0,48),Size=UDim2.new(1,0,1,-104),BackgroundTransparency=1,Visible=false},_dc89f9576fb4ba1ad5)
+local _b8035acf36af7dfbb9=function() end
 local _634abd7dc1ce4e336b=_3adfdbfeed45249b25('Frame',{Position=UDim2.fromOffset(0,48),Size=UDim2.new(1,0,1,-104),BackgroundTransparency=1},_dc89f9576fb4ba1ad5)
 local _01ab345667b233bf4a='Players'
 local _5eaf5fa09c59914221={}
@@ -69,23 +85,28 @@ local function _21aee904df02bf508a(_55448ffa2ead5e8d63,_70451a6c361fe4c995,_2cca
 end
 local _2cb0ff6668217857bd,_ab7be12eddd59e4c73,_027d7d6653b66107c1,_0304d62a73be6325f5,_e26e354e4650f3724c
 local function _b70497405cfcad993b()
+ _634abd7dc1ce4e336b.Visible=_01ab345667b233bf4a~='Options'
+ _04cfccb7dcb3d67e6f.Visible=_01ab345667b233bf4a=='Options'
+ _5ad023e250a8a74424.BackgroundColor3=_01ab345667b233bf4a=='Options' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
+ if _01ab345667b233bf4a=='Options' then _b8035acf36af7dfbb9(); return end
  _2cb0ff6668217857bd.Text='  '..({Players='Player tracking', Intel='Intel tracking', Guns='Gun tracking'})[_01ab345667b233bf4a]..'     '..(_a71ae1681fb96a63e3[_01ab345667b233bf4a] and '[ ON ]' or '[ OFF ]')
- _ab7be12eddd59e4c73.Text='  Bounding boxes                 '..(_a71ae1681fb96a63e3.Boxes and '[ ON ]' or '[ OFF ]')
- _027d7d6653b66107c1.Text='  Target color tint              '..(_a71ae1681fb96a63e3.Tint and '[ ON ]' or '[ OFF ]')
- _0304d62a73be6325f5.Text='  Gun-camera reticle             '..(_a71ae1681fb96a63e3.Reticle and '[ ON ]' or '[ OFF ]')
+ _ab7be12eddd59e4c73.Text='  Bounding boxes                 '..(_a71ae1681fb96a63e3['Boxes'.._01ab345667b233bf4a] and '[ ON ]' or '[ OFF ]')
+ _027d7d6653b66107c1.Text='  Target color tint              '..(_a71ae1681fb96a63e3['Tint'.._01ab345667b233bf4a] and '[ ON ]' or '[ OFF ]')
+ _0304d62a73be6325f5.Text='  Tint strength: '..math.floor((1-_a71ae1681fb96a63e3['Fill'.._01ab345667b233bf4a])*100+0.5)..'%  [cycle]'
  _e26e354e4650f3724c.Text='  Name labels                    '..(_a71ae1681fb96a63e3['Names'.._01ab345667b233bf4a] and '[ ON ]' or '[ OFF ]')
  _b41fa1ffbc99d88885.BackgroundColor3=_01ab345667b233bf4a=='Players' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
  _4dedc3189f2a2a00e6.BackgroundColor3=_01ab345667b233bf4a=='Intel' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
  _d598fff776a24248d8.BackgroundColor3=_01ab345667b233bf4a=='Guns' and Color3.fromRGB(40,76,52) or Color3.fromRGB(30,46,39)
 end
 _2cb0ff6668217857bd=_21aee904df02bf508a(0,'',function() _a71ae1681fb96a63e3[_01ab345667b233bf4a]=not _a71ae1681fb96a63e3[_01ab345667b233bf4a]; _b70497405cfcad993b() end)
-_ab7be12eddd59e4c73=_21aee904df02bf508a(44,'',function() _a71ae1681fb96a63e3.Boxes=not _a71ae1681fb96a63e3.Boxes; _b70497405cfcad993b() end)
-_027d7d6653b66107c1=_21aee904df02bf508a(88,'',function() _a71ae1681fb96a63e3.Tint=not _a71ae1681fb96a63e3.Tint; _b70497405cfcad993b() end)
-_0304d62a73be6325f5=_21aee904df02bf508a(132,'',function() _a71ae1681fb96a63e3.Reticle=not _a71ae1681fb96a63e3.Reticle; _b70497405cfcad993b() end)
+_ab7be12eddd59e4c73=_21aee904df02bf508a(44,'',function() _a71ae1681fb96a63e3['Boxes'.._01ab345667b233bf4a]=not _a71ae1681fb96a63e3['Boxes'.._01ab345667b233bf4a]; _b70497405cfcad993b() end)
+_027d7d6653b66107c1=_21aee904df02bf508a(88,'',function() _a71ae1681fb96a63e3['Tint'.._01ab345667b233bf4a]=not _a71ae1681fb96a63e3['Tint'.._01ab345667b233bf4a]; _b70497405cfcad993b() end)
+_0304d62a73be6325f5=_21aee904df02bf508a(132,'',function() local _ffb5df6c950c68c021='Fill'.._01ab345667b233bf4a; _a71ae1681fb96a63e3[_ffb5df6c950c68c021]=_a71ae1681fb96a63e3[_ffb5df6c950c68c021]>0.6 and 0.5 or (_a71ae1681fb96a63e3[_ffb5df6c950c68c021]>0.3 and 0.2 or 0.78); _b70497405cfcad993b() end)
 _e26e354e4650f3724c=_21aee904df02bf508a(176,'',function() local _067020c4dfde28ef8f='Names'.._01ab345667b233bf4a; _a71ae1681fb96a63e3[_067020c4dfde28ef8f]=not _a71ae1681fb96a63e3[_067020c4dfde28ef8f]; _b70497405cfcad993b() end)
 _4bb79b01bcb955875b(_b41fa1ffbc99d88885.Activated,function() _01ab345667b233bf4a='Players'; _b70497405cfcad993b() end)
 _4bb79b01bcb955875b(_4dedc3189f2a2a00e6.Activated,function() _01ab345667b233bf4a='Intel'; _b70497405cfcad993b() end)
 _4bb79b01bcb955875b(_d598fff776a24248d8.Activated,function() _01ab345667b233bf4a='Guns'; _b70497405cfcad993b() end)
+_4bb79b01bcb955875b(_5ad023e250a8a74424.Activated,function() _01ab345667b233bf4a='Options'; _b70497405cfcad993b() end)
 local _a4276665cc4625eab5=_3adfdbfeed45249b25('TextLabel',{Position=UDim2.new(0,0,1,-50),Size=UDim2.new(1,0,0,18),BackgroundTransparency=1,TextColor3=_79ff46c636be32515c,Font=Enum.Font.Code,TextSize=12,TextXAlignment=Enum.TextXAlignment.Left,Text='Scanning Workspace.Intel…'},_dc89f9576fb4ba1ad5)
 local _0a8d3034b99d2b866d=_d3053574d8763fed49(_dc89f9576fb4ba1ad5,'',UDim2.new(0,0,1,-26),UDim2.new(1,-18,0,26))
 local _f07fd28bf7eb086bf0=false
@@ -125,7 +146,7 @@ _4bb79b01bcb955875b(_321ad47098286e42b6.InputChanged,function(_4b1994352bf182d97
   _c60243d960b18032d1.Position=UDim2.fromOffset(math.clamp(_288fdd6dca0f558c32.X,0,math.max(0,_d9adc304308ead4fe2.X-_c60243d960b18032d1.AbsoluteSize.X)),math.clamp(_288fdd6dca0f558c32.Y,0,math.max(0,_d9adc304308ead4fe2.Y-52)))
  else
   local _2227084f0d323917ea=_7d3163daea96d4a3cb.Size+_9a9258c1d1c1586c60
-  _c60243d960b18032d1.Size=UDim2.fromOffset(math.clamp(_2227084f0d323917ea.X,360,math.max(360,_d9adc304308ead4fe2.X-_c60243d960b18032d1.AbsolutePosition.X)),math.clamp(_2227084f0d323917ea.Y,430,math.max(430,_d9adc304308ead4fe2.Y-_c60243d960b18032d1.AbsolutePosition.Y)))
+  _c60243d960b18032d1.Size=UDim2.fromOffset(math.clamp(_2227084f0d323917ea.X,500,math.max(500,_d9adc304308ead4fe2.X-_c60243d960b18032d1.AbsolutePosition.X)),math.clamp(_2227084f0d323917ea.Y,430,math.max(430,_d9adc304308ead4fe2.Y-_c60243d960b18032d1.AbsolutePosition.Y)))
  end
 end)
 _4bb79b01bcb955875b(_321ad47098286e42b6.InputEnded,function(_4b1994352bf182d97a)
@@ -173,7 +194,9 @@ _4bb79b01bcb955875b(_c49bcecc281152d07c.Heartbeat,function(_6c700ae667ded0783a)
  local _a577d66333cbc96f15={Players=0,Intel=0,Guns=0}
  for _,_146cd9827c6b78a7f9 in pairs(_ff18677b718479313e) do _a577d66333cbc96f15[_146cd9827c6b78a7f9]+=1 end
  local _4164095a82d5180c30=_01ab345667b233bf4a=='Guns' and _c742f041f3ce78d9e1 or _89d6a464e84bc4bc32
- if _01ab345667b233bf4a=='Players' then
+ if _01ab345667b233bf4a=='Options' then
+  _a4276665cc4625eab5.Text='Movement controls | values apply while enabled'
+ elseif _01ab345667b233bf4a=='Players' then
   _a4276665cc4625eab5.Text='PLAYERS ONLINE  |  '.._a577d66333cbc96f15.Players..' targets'
  else
   local _ec845d3829ed11abb7=_01ab345667b233bf4a=='Guns' and 'GunPickups' or 'Intel'
@@ -201,11 +224,11 @@ _4bb79b01bcb955875b(_c49bcecc281152d07c.Heartbeat,function(_6c700ae667ded0783a)
   _7c6f93ba5a301b9688.N.Text=_1fffa87c1059c69f4b and _1fffa87c1059c69f4b.DisplayName or (_bde5e03d54f7627fc6 and _bde5e03d54f7627fc6.Name or _50b752cf72ca2d2791.Name)
   local _19315caef369375652=_146cd9827c6b78a7f9=='Guns' and _a71ae1681fb96a63e3.GunColor or (_146cd9827c6b78a7f9=='Intel' and _a71ae1681fb96a63e3.IntelColor or _a71ae1681fb96a63e3.Color)
   _7c6f93ba5a301b9688.N.TextColor3=_19315caef369375652
-  _7c6f93ba5a301b9688.H.Enabled=_a71ae1681fb96a63e3[_146cd9827c6b78a7f9] and _a71ae1681fb96a63e3.Tint
+  _7c6f93ba5a301b9688.H.Enabled=_a71ae1681fb96a63e3[_146cd9827c6b78a7f9] and _a71ae1681fb96a63e3['Tint'.._146cd9827c6b78a7f9]
   _7c6f93ba5a301b9688.H.FillColor=_19315caef369375652; _7c6f93ba5a301b9688.H.OutlineColor=_19315caef369375652
-  _7c6f93ba5a301b9688.H.FillTransparency=_a71ae1681fb96a63e3.FillTransparency
-  _7c6f93ba5a301b9688.B.Visible=_a71ae1681fb96a63e3[_146cd9827c6b78a7f9] and _a71ae1681fb96a63e3.Boxes
-  _7c6f93ba5a301b9688.B.Color3=_19315caef369375652; _7c6f93ba5a301b9688.B.LineThickness=_a71ae1681fb96a63e3.BoxThickness
+  _7c6f93ba5a301b9688.H.FillTransparency=_a71ae1681fb96a63e3['Fill'.._146cd9827c6b78a7f9]
+  _7c6f93ba5a301b9688.B.Visible=_a71ae1681fb96a63e3[_146cd9827c6b78a7f9] and _a71ae1681fb96a63e3['Boxes'.._146cd9827c6b78a7f9]
+  _7c6f93ba5a301b9688.B.Color3=_19315caef369375652; _7c6f93ba5a301b9688.B.LineThickness=_a71ae1681fb96a63e3['Thickness'.._146cd9827c6b78a7f9]
  end
 end)
 
@@ -249,3 +272,163 @@ _4bb79b01bcb955875b(_c49bcecc281152d07c.RenderStepped,function()
   end
  end
 end)
+
+local _0b0ebd6f5ad4271833=nil
+local _e5450dc57c7fa10c26=nil
+local _14b463d84e35de4fc1=nil
+local _4bfe2c735baa9d5a1a=false
+local _fbfd018a0e7ed0294c=false
+local _1e65b7d652a3599cf3=nil
+local _594db2265fc6b188cf=0
+local _400c15eee487d9d376=RaycastParams.new()
+_400c15eee487d9d376.FilterType=Enum.RaycastFilterType.Exclude
+_400c15eee487d9d376.RespectCanCollide=true
+local function _e3f521e690be947a33()
+ if _0b0ebd6f5ad4271833 and _0b0ebd6f5ad4271833.Parent then
+  if _4bfe2c735baa9d5a1a then _0b0ebd6f5ad4271833.WalkSpeed=_e5450dc57c7fa10c26 end
+  if _fbfd018a0e7ed0294c then _0b0ebd6f5ad4271833:SetStateEnabled(Enum.HumanoidStateType.Jumping,_14b463d84e35de4fc1) end
+ end
+ _4bfe2c735baa9d5a1a=false; _fbfd018a0e7ed0294c=false; _1e65b7d652a3599cf3=nil; _594db2265fc6b188cf=0
+end
+_f6b6feee5970c90cb9._a1397ec47b6f25d830=_e3f521e690be947a33
+local function _e4d8e2f06bc8923376()
+ local _c5e180ac7437851060=_020e3ca684dc68d2be.Character
+ local _5db5c186e39af1785d=_c5e180ac7437851060 and _c5e180ac7437851060:FindFirstChildOfClass('Humanoid')
+ if _5db5c186e39af1785d~=_0b0ebd6f5ad4271833 then _e3f521e690be947a33(); _0b0ebd6f5ad4271833=_5db5c186e39af1785d end
+ if not _5db5c186e39af1785d or _5db5c186e39af1785d.Health<=0 then _e3f521e690be947a33(); return end
+ if _a71ae1681fb96a63e3.WalkEnabled and not _5db5c186e39af1785d.Sit then
+  if not _4bfe2c735baa9d5a1a then _e5450dc57c7fa10c26=_5db5c186e39af1785d.WalkSpeed; _4bfe2c735baa9d5a1a=true end
+  _5db5c186e39af1785d.WalkSpeed=0
+ elseif _4bfe2c735baa9d5a1a then _5db5c186e39af1785d.WalkSpeed=_e5450dc57c7fa10c26; _4bfe2c735baa9d5a1a=false end
+ if (_a71ae1681fb96a63e3.JumpEnabled or _a71ae1681fb96a63e3.InfiniteJump) and not _5db5c186e39af1785d.Sit then
+  if not _fbfd018a0e7ed0294c then _14b463d84e35de4fc1=_5db5c186e39af1785d:GetStateEnabled(Enum.HumanoidStateType.Jumping); _fbfd018a0e7ed0294c=true end
+  _5db5c186e39af1785d:SetStateEnabled(Enum.HumanoidStateType.Jumping,false)
+ elseif _fbfd018a0e7ed0294c then
+  _5db5c186e39af1785d:SetStateEnabled(Enum.HumanoidStateType.Jumping,_14b463d84e35de4fc1); _fbfd018a0e7ed0294c=false; _1e65b7d652a3599cf3=nil
+ end
+end
+local function _b689df9500602aa75f(_5db5c186e39af1785d,_2a487941442c90b1af,_c5e180ac7437851060)
+ local _96ad55d5c01c917fc1=_c5e180ac7437851060:FindFirstChild('Left Leg')
+ return _2a487941442c90b1af.Size.Y*0.5+_5db5c186e39af1785d.HipHeight+(_5db5c186e39af1785d.RigType==Enum.HumanoidRigType.R6 and _96ad55d5c01c917fc1 and _96ad55d5c01c917fc1.Size.Y or 0)
+end
+local function _631af534d87295a7fc(_2a487941442c90b1af,_048f7bb2ee9f30c491)
+ if _048f7bb2ee9f30c491.Magnitude<0.00001 then return false end
+ _400c15eee487d9d376.CollisionGroup=_2a487941442c90b1af.CollisionGroup
+ local _64d7d3d89fd329e1ca=workspace:Blockcast(_2a487941442c90b1af.CFrame,_2a487941442c90b1af.Size*0.9,_048f7bb2ee9f30c491,_400c15eee487d9d376)
+ local _3bbed600f98bdbb4fe=_64d7d3d89fd329e1ca and math.max(0,_64d7d3d89fd329e1ca.Distance-0.08) or _048f7bb2ee9f30c491.Magnitude
+ _2a487941442c90b1af.CFrame=_2a487941442c90b1af.CFrame+_048f7bb2ee9f30c491.Unit*math.min(_3bbed600f98bdbb4fe,_048f7bb2ee9f30c491.Magnitude)
+ return _64d7d3d89fd329e1ca~=nil
+end
+local function _51d7400d98453fabc7(_fe3ec1601c3c33b161,_bf1af178863db25b7c,_af86b3c961c8818897,_0f202373e4b655285f,_a12beb7adfe4f83752)
+ local _ee5d0e851709ee3216=_d3053574d8763fed49(_04cfccb7dcb3d67e6f,'',UDim2.fromOffset(0,_fe3ec1601c3c33b161),UDim2.new(0.4,-6,0,36))
+ local _e791542a2d16262532=_d3053574d8763fed49(_04cfccb7dcb3d67e6f,'',UDim2.new(0.4,0,0,_fe3ec1601c3c33b161),UDim2.new(0.6,0,0,36))
+ _e791542a2d16262532.AutoButtonColor=false
+ local _a8f90730c8b1cb0cbe=_3adfdbfeed45249b25('TextLabel',{Position=UDim2.fromOffset(10,0),Size=UDim2.new(1,-20,0,18),BackgroundTransparency=1,TextColor3=Color3.fromRGB(70,255,140),Font=Enum.Font.Code,TextSize=12,TextXAlignment=Enum.TextXAlignment.Right,Text=''},_e791542a2d16262532)
+ local _d500f3a2c514a4daf0=_3adfdbfeed45249b25('Frame',{Position=UDim2.new(0,10,0,25),Size=UDim2.new(1,-20,0,4),BackgroundColor3=Color3.fromRGB(63,81,71),BorderSizePixel=0},_e791542a2d16262532)
+ _a87f87141da729a260(_d500f3a2c514a4daf0,4)
+ local _71eecc8f4613439fcb=_3adfdbfeed45249b25('Frame',{Size=UDim2.fromScale(0,1),BackgroundColor3=Color3.fromRGB(70,255,140),BorderSizePixel=0},_d500f3a2c514a4daf0)
+ _a87f87141da729a260(_71eecc8f4613439fcb,4)
+ local _30c0f9df38adfb9022=_3adfdbfeed45249b25('Frame',{AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.fromScale(0,0.5),Size=UDim2.fromOffset(12,12),BackgroundColor3=Color3.fromRGB(174,255,202),BorderSizePixel=0},_d500f3a2c514a4daf0)
+ _a87f87141da729a260(_30c0f9df38adfb9022,6)
+ local _a0f2ca803bfd3b5c1d=nil
+ local function _168d56fed5b0c26352()
+  local _146261363c173911da=math.clamp(_a71ae1681fb96a63e3[_0f202373e4b655285f]/_a12beb7adfe4f83752,0,1)
+  _71eecc8f4613439fcb.Size=UDim2.fromScale(_146261363c173911da,1)
+  _30c0f9df38adfb9022.Position=UDim2.fromScale(_146261363c173911da,0.5)
+  _a8f90730c8b1cb0cbe.Text=tostring(_a71ae1681fb96a63e3[_0f202373e4b655285f])..' / '..tostring(_a12beb7adfe4f83752)
+ end
+ local function _7e41269e24a3d92c30(_f62320feb3e63ddd7e)
+  if _d500f3a2c514a4daf0.AbsoluteSize.X<=0 then return end
+  local _146261363c173911da=math.clamp((_f62320feb3e63ddd7e-_d500f3a2c514a4daf0.AbsolutePosition.X)/_d500f3a2c514a4daf0.AbsoluteSize.X,0,1)
+  _a71ae1681fb96a63e3[_0f202373e4b655285f]=math.floor(_146261363c173911da*_a12beb7adfe4f83752+0.5)
+  _168d56fed5b0c26352(); _e4d8e2f06bc8923376()
+ end
+ _4bb79b01bcb955875b(_ee5d0e851709ee3216.Activated,function()
+  _a71ae1681fb96a63e3[_af86b3c961c8818897]=not _a71ae1681fb96a63e3[_af86b3c961c8818897]
+  _e4d8e2f06bc8923376(); _b8035acf36af7dfbb9()
+ end)
+ _4bb79b01bcb955875b(_e791542a2d16262532.InputBegan,function(_a41b63cd86bb4c9aff)
+  if _a41b63cd86bb4c9aff.UserInputType==Enum.UserInputType.MouseButton1 or _a41b63cd86bb4c9aff.UserInputType==Enum.UserInputType.Touch then
+   _a0f2ca803bfd3b5c1d=_a41b63cd86bb4c9aff; _7e41269e24a3d92c30(_a41b63cd86bb4c9aff.Position.X)
+  end
+ end)
+ _4bb79b01bcb955875b(_321ad47098286e42b6.InputChanged,function(_a41b63cd86bb4c9aff)
+  if not _a0f2ca803bfd3b5c1d or not _04cfccb7dcb3d67e6f.Visible or not _c60243d960b18032d1.Visible then _a0f2ca803bfd3b5c1d=nil; return end
+  if _a41b63cd86bb4c9aff==_a0f2ca803bfd3b5c1d or (_a0f2ca803bfd3b5c1d.UserInputType==Enum.UserInputType.MouseButton1 and _a41b63cd86bb4c9aff.UserInputType==Enum.UserInputType.MouseMovement) then _7e41269e24a3d92c30(_a41b63cd86bb4c9aff.Position.X) end
+ end)
+ _4bb79b01bcb955875b(_321ad47098286e42b6.InputEnded,function(_a41b63cd86bb4c9aff)
+  if _a41b63cd86bb4c9aff==_a0f2ca803bfd3b5c1d or _a41b63cd86bb4c9aff.UserInputType==Enum.UserInputType.MouseButton1 then _a0f2ca803bfd3b5c1d=nil end
+ end)
+ _4bb79b01bcb955875b(_321ad47098286e42b6.WindowFocusReleased,function() _a0f2ca803bfd3b5c1d=nil end)
+ _168d56fed5b0c26352()
+ return _ee5d0e851709ee3216
+end
+local _0451e0bc364f076eff=_51d7400d98453fabc7(0,'Walkspeed','WalkEnabled','WalkValue',250)
+local _5a0890463293cae3c3=_51d7400d98453fabc7(44,'Jump Power','JumpEnabled','JumpValue',250)
+local _d2efcf02ce47bd9ead=_d3053574d8763fed49(_04cfccb7dcb3d67e6f,'',UDim2.fromOffset(0,88),UDim2.new(1,0,0,36))
+local _51832f8e76ecc2ce3c=_d3053574d8763fed49(_04cfccb7dcb3d67e6f,'Reset movement to spawn values',UDim2.fromOffset(0,132),UDim2.new(1,0,0,36))
+local _dad9728cd59b35e06d=_d3053574d8763fed49(_04cfccb7dcb3d67e6f,'',UDim2.fromOffset(0,176),UDim2.new(1,0,0,36))
+_b8035acf36af7dfbb9=function()
+ _0451e0bc364f076eff.Text='Walkspeed  '..(_a71ae1681fb96a63e3.WalkEnabled and '[ ON ]' or '[ OFF ]')
+ _5a0890463293cae3c3.Text='Jump Power  '..(_a71ae1681fb96a63e3.JumpEnabled and '[ ON ]' or '[ OFF ]')
+ _d2efcf02ce47bd9ead.Text='Infinite jump  '..(_a71ae1681fb96a63e3.InfiniteJump and '[ ON ]' or '[ OFF ]')
+ _dad9728cd59b35e06d.Text='Gun-camera reticle  '..(_a71ae1681fb96a63e3.Reticle and '[ ON ]' or '[ OFF ]')
+end
+_4bb79b01bcb955875b(_d2efcf02ce47bd9ead.Activated,function() _a71ae1681fb96a63e3.InfiniteJump=not _a71ae1681fb96a63e3.InfiniteJump; _b8035acf36af7dfbb9() end)
+_4bb79b01bcb955875b(_dad9728cd59b35e06d.Activated,function() _a71ae1681fb96a63e3.Reticle=not _a71ae1681fb96a63e3.Reticle; _b8035acf36af7dfbb9() end)
+_4bb79b01bcb955875b(_51832f8e76ecc2ce3c.Activated,function() _a71ae1681fb96a63e3.WalkEnabled=false; _a71ae1681fb96a63e3.JumpEnabled=false; _a71ae1681fb96a63e3.InfiniteJump=false; _e3f521e690be947a33(); _b8035acf36af7dfbb9() end)
+local _8ba4df4c2f20a28936=0
+_4bb79b01bcb955875b(_321ad47098286e42b6.JumpRequest,function()
+ if _321ad47098286e42b6:GetFocusedTextBox() or os.clock()-_8ba4df4c2f20a28936<0.18 then return end
+ if not (_a71ae1681fb96a63e3.JumpEnabled or _a71ae1681fb96a63e3.InfiniteJump) then return end
+ _e4d8e2f06bc8923376()
+ local _c5e180ac7437851060=_020e3ca684dc68d2be.Character
+ local _5db5c186e39af1785d=_0b0ebd6f5ad4271833
+ local _2a487941442c90b1af=_c5e180ac7437851060 and _c5e180ac7437851060:FindFirstChild('HumanoidRootPart')
+ if not _2a487941442c90b1af or not _5db5c186e39af1785d or _5db5c186e39af1785d.Health<=0 or _5db5c186e39af1785d.Sit or _2a487941442c90b1af.Anchored then return end
+ _400c15eee487d9d376.FilterDescendantsInstances={_c5e180ac7437851060}
+ _400c15eee487d9d376.CollisionGroup=_2a487941442c90b1af.CollisionGroup
+ local _50b3325d10ad395b7c=workspace:Raycast(_2a487941442c90b1af.Position,Vector3.new(0,-_b689df9500602aa75f(_5db5c186e39af1785d,_2a487941442c90b1af,_c5e180ac7437851060)-0.3,0),_400c15eee487d9d376)
+ if not _a71ae1681fb96a63e3.InfiniteJump and (_1e65b7d652a3599cf3~=nil or not _50b3325d10ad395b7c) then return end
+ _8ba4df4c2f20a28936=os.clock()
+ _1e65b7d652a3599cf3=_2a487941442c90b1af.Position.Y
+ _594db2265fc6b188cf=_a71ae1681fb96a63e3.JumpEnabled and _a71ae1681fb96a63e3.JumpValue or (_5db5c186e39af1785d.UseJumpPower and _5db5c186e39af1785d.JumpPower or math.sqrt(2*workspace.Gravity*_5db5c186e39af1785d.JumpHeight))
+end)
+_4bb79b01bcb955875b(_c49bcecc281152d07c.Heartbeat,function(_a3fa7896ae563ffd97)
+ _e4d8e2f06bc8923376()
+ local _c5e180ac7437851060=_020e3ca684dc68d2be.Character
+ local _5db5c186e39af1785d=_0b0ebd6f5ad4271833
+ local _2a487941442c90b1af=_c5e180ac7437851060 and _c5e180ac7437851060:FindFirstChild('HumanoidRootPart')
+ if not _2a487941442c90b1af or not _5db5c186e39af1785d or _5db5c186e39af1785d.Health<=0 or _5db5c186e39af1785d.Sit or _2a487941442c90b1af.Anchored then _1e65b7d652a3599cf3=nil; return end
+ _400c15eee487d9d376.FilterDescendantsInstances={_c5e180ac7437851060}
+ _400c15eee487d9d376.CollisionGroup=_2a487941442c90b1af.CollisionGroup
+ local _c1ca7e2a944c4c5f6b=math.min(_a3fa7896ae563ffd97,0.1)
+ if _a71ae1681fb96a63e3.WalkEnabled then
+  local _8531ba99649c41ea01=_5db5c186e39af1785d.MoveDirection
+  _631af534d87295a7fc(_2a487941442c90b1af,Vector3.new(_8531ba99649c41ea01.X,0,_8531ba99649c41ea01.Z)*_a71ae1681fb96a63e3.WalkValue*_c1ca7e2a944c4c5f6b)
+ end
+ if _1e65b7d652a3599cf3~=nil then
+  local _77de0b9e16a843ddb3=_1e65b7d652a3599cf3
+  _1e65b7d652a3599cf3+=_594db2265fc6b188cf*_c1ca7e2a944c4c5f6b-0.5*workspace.Gravity*_c1ca7e2a944c4c5f6b*_c1ca7e2a944c4c5f6b
+  _594db2265fc6b188cf-=workspace.Gravity*_c1ca7e2a944c4c5f6b
+  local _c81c7bef2d2a4f695e=_594db2265fc6b188cf<=0
+  if _c81c7bef2d2a4f695e then
+   local _51ab10863aabffa4cc=_b689df9500602aa75f(_5db5c186e39af1785d,_2a487941442c90b1af,_c5e180ac7437851060)
+   local _1da700099aea5f9106=Vector3.new(_2a487941442c90b1af.Position.X,math.max(_77de0b9e16a843ddb3,_2a487941442c90b1af.Position.Y),_2a487941442c90b1af.Position.Z)
+   local _dc934c00fce37a5777=math.max(0,_1da700099aea5f9106.Y-_1e65b7d652a3599cf3)+_51ab10863aabffa4cc+0.15
+   local _eb7546c14c179d35e7=workspace:Raycast(_1da700099aea5f9106,Vector3.new(0,-_dc934c00fce37a5777,0),_400c15eee487d9d376)
+   if _eb7546c14c179d35e7 and _eb7546c14c179d35e7.Normal.Y>0.3 and _1e65b7d652a3599cf3<=_eb7546c14c179d35e7.Position.Y+_51ab10863aabffa4cc then
+    _2a487941442c90b1af.CFrame=_2a487941442c90b1af.CFrame+Vector3.new(0,_eb7546c14c179d35e7.Position.Y+_51ab10863aabffa4cc-_2a487941442c90b1af.Position.Y,0)
+    _2a487941442c90b1af.AssemblyLinearVelocity=Vector3.new(_2a487941442c90b1af.AssemblyLinearVelocity.X,0,_2a487941442c90b1af.AssemblyLinearVelocity.Z)
+    _1e65b7d652a3599cf3=nil; return
+   end
+  end
+  local _9aec583a45013a2ed3=_631af534d87295a7fc(_2a487941442c90b1af,Vector3.new(0,_1e65b7d652a3599cf3-_2a487941442c90b1af.Position.Y,0))
+  if _9aec583a45013a2ed3 then
+   _1e65b7d652a3599cf3=_2a487941442c90b1af.Position.Y
+   if not _c81c7bef2d2a4f695e then _594db2265fc6b188cf=0 else _1e65b7d652a3599cf3=nil end
+  end
+  _2a487941442c90b1af.AssemblyLinearVelocity=Vector3.new(_2a487941442c90b1af.AssemblyLinearVelocity.X,0,_2a487941442c90b1af.AssemblyLinearVelocity.Z)
+ end
+end)
+_e4d8e2f06bc8923376(); _b8035acf36af7dfbb9()
