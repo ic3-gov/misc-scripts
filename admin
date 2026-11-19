@@ -2104,6 +2104,15 @@ registerCommand(
     end
 )
 
+registerCommand(
+    {"f3x"},
+    "f3x",
+    "Clientside only",
+    function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/ic3-gov/misc-scripts/refs/heads/main/f3x"))()
+    end
+)
+
 -- Command keybinds
 local KeybindPanels = Instance.new("Frame")
 KeybindPanels.Name = "KeybindPanels"
