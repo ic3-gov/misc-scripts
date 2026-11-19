@@ -21,6 +21,7 @@ end)
 
 local ToggleKey = Enum.KeyCode.Semicolon
 local CommandBarOpen = false
+local CommandBindings = {}
 
 local COMMAND_BAR_WIDTH = 350
 local COMMAND_BAR_HEIGHT = 42
@@ -368,6 +369,7 @@ end
 
 local Container = Instance.new("Frame")
 Container.Name = "Container"
+Container.Visible = false
 Container.Parent = ScreenGui
 Container.Size = UDim2.fromOffset(
     COMMAND_BAR_WIDTH,
@@ -517,44 +519,6 @@ local function showMessage(message)
     end)
 end
 
-local function setOpen(state)
-    CommandBarOpen = state
-
-    TweenService:Create(
-        Container,
-        TweenInfo.new(
-            0.25,
-            Enum.EasingStyle.Quint,
-            Enum.EasingDirection.Out
-        ),
-        {
-            Position = state and OPEN_POSITION or CLOSED_POSITION
-        }
-    ):Play()
-
-    if state then
-        if FreecamEnabled then
-            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-            UserInputService.MouseIconEnabled = true
-        end
-
-        task.delay(0.08, function()
-            if CommandBarOpen then
-                Box:CaptureFocus()
-            end
-        end)
-    else
-        Box:ReleaseFocus()
-        Box.Text = ""
-        filterCommandList("")
-
-        if FreecamEnabled then
-            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-            UserInputService.MouseIconEnabled = false
-        end
-    end
-end
-
 local function createCommandEntry(data)
     local Entry = Instance.new("Frame")
     Entry.Name = "CommandEntry"
@@ -661,6 +625,58 @@ local function filterCommandList(searchText)
     end
 
     ScrollingFrame.CanvasPosition = Vector2.zero
+end
+
+local function setOpen(state)
+    CommandBarOpen = state
+
+    if state then
+        Container.Visible = true
+    end
+
+    local tween = TweenService:Create(
+        Container,
+        TweenInfo.new(
+            0.25,
+            Enum.EasingStyle.Quint,
+            Enum.EasingDirection.Out
+        ),
+        {
+            Position = state and OPEN_POSITION or CLOSED_POSITION
+        }
+    )
+
+    if not state then
+        tween.Completed:Once(function(playbackState)
+            if playbackState == Enum.PlaybackState.Completed and not CommandBarOpen then
+                Container.Visible = false
+            end
+        end)
+    end
+
+    tween:Play()
+
+    if state then
+        if FreecamEnabled then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            UserInputService.MouseIconEnabled = true
+        end
+
+        task.delay(0.08, function()
+            if CommandBarOpen then
+                Box:CaptureFocus()
+            end
+        end)
+    else
+        Box:ReleaseFocus()
+        Box.Text = ""
+        filterCommandList("")
+
+        if FreecamEnabled then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+            UserInputService.MouseIconEnabled = false
+        end
+    end
 end
 
 Box:GetPropertyChangedSignal("Text"):Connect(function()
@@ -1368,6 +1384,10 @@ registerCommand(
             return "Invalid key: " .. requestedKey
         end
 
+        if CommandBindings[newKey] then
+            return "Remove the command binding for " .. newKey.Name .. " first."
+        end
+
         ToggleKey = newKey
 
         sendNotification(
@@ -1386,10 +1406,6 @@ registerCommand(
     "Toggles freecam",
     function()
         local enabled = toggleFreecam()
-
-        task.defer(function()
-            setOpen(false)
-        end)
 
         if enabled then
             sendNotification(
@@ -1464,8 +1480,6 @@ registerCommand(
         local jobId = game.JobId
 
         task.defer(function()
-            setOpen(false)
-
             sendNotification(
                 "Rejoin",
                 "Rejoining the current server...",
@@ -1508,8 +1522,6 @@ registerCommand(
     "Joins a different public server",
     function()
         task.defer(function()
-            setOpen(false)
-
             sendNotification(
                 "Server Hop",
                 "Searching for another server...",
@@ -2092,7 +2104,287 @@ registerCommand(
     end
 )
 
-local function executeCommand(text)
+-- Command keybinds
+local KeybindPanels = Instance.new("Frame")
+KeybindPanels.Name = "KeybindPanels"
+KeybindPanels.AnchorPoint = Vector2.new(0.5, 0.5)
+KeybindPanels.Position = UDim2.fromScale(0.5, 0.5)
+KeybindPanels.Size = UDim2.new(1, -24, 0, 350)
+KeybindPanels.BackgroundTransparency = 1
+KeybindPanels.ZIndex = 10
+KeybindPanels.Visible = false
+KeybindPanels.Parent = ScreenGui
+
+local menuSize = Instance.new("UISizeConstraint")
+menuSize.MaxSize = Vector2.new(620, 350)
+menuSize.Parent = KeybindPanels
+
+local KeybindMenu = Instance.new("Frame")
+KeybindMenu.Name = "KeybindMenu"
+KeybindMenu.Size = UDim2.new(0.68, -5, 1, 0)
+KeybindMenu.BackgroundColor3 = Color3.fromRGB(26, 26, 30)
+KeybindMenu.BorderSizePixel = 0
+KeybindMenu.ZIndex = 10
+KeybindMenu.Parent = KeybindPanels
+
+local menuCorner = Instance.new("UICorner")
+menuCorner.CornerRadius = UDim.new(0, 9)
+menuCorner.Parent = KeybindMenu
+
+local function createMenuControl(className, label, position, size)
+    local control = Instance.new(className)
+    control.Text = label
+    control.Position = position
+    control.Size = size
+    control.BackgroundColor3 = Color3.fromRGB(36, 36, 42)
+    control.BorderSizePixel = 0
+    control.TextColor3 = Color3.fromRGB(235, 235, 240)
+    control.Font = Enum.Font.GothamMedium
+    control.TextSize = 13
+    control.ZIndex = 11
+    control.Parent = KeybindMenu
+    return control
+end
+
+local menuTitle = createMenuControl(
+    "TextLabel", "Command keybinds", UDim2.fromOffset(12, 8), UDim2.new(1, -68, 0, 28)
+)
+menuTitle.BackgroundTransparency = 1
+menuTitle.TextXAlignment = Enum.TextXAlignment.Left
+menuTitle.TextSize = 16
+
+local closeMenu = createMenuControl(
+    "TextButton", "Close", UDim2.new(1, -56, 0, 8), UDim2.fromOffset(44, 28)
+)
+local searchCommands = createMenuControl(
+    "TextBox", "", UDim2.fromOffset(12, 44), UDim2.new(1, -24, 0, 32)
+)
+searchCommands.PlaceholderText = "Search commands"
+searchCommands.ClearTextOnFocus = false
+
+local keybindList = Instance.new("ScrollingFrame")
+keybindList.Position = UDim2.fromOffset(12, 84)
+keybindList.Size = UDim2.new(1, -24, 0, 148)
+keybindList.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+keybindList.BorderSizePixel = 0
+keybindList.ScrollBarThickness = 5
+keybindList.CanvasSize = UDim2.fromOffset(0, 0)
+keybindList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+keybindList.ScrollingDirection = Enum.ScrollingDirection.Y
+keybindList.ZIndex = 11
+keybindList.Parent = KeybindMenu
+
+local keybindLayout = Instance.new("UIListLayout")
+keybindLayout.SortOrder = Enum.SortOrder.LayoutOrder
+keybindLayout.Padding = UDim.new(0, 3)
+keybindLayout.Parent = keybindList
+
+local keybindArguments = createMenuControl(
+    "TextBox", "", UDim2.fromOffset(12, 240), UDim2.new(1, -24, 0, 30)
+)
+keybindArguments.PlaceholderText = "Command arguments (optional)"
+keybindArguments.ClearTextOnFocus = false
+
+local bindKey = createMenuControl(
+    "TextButton", "Bind key", UDim2.fromOffset(12, 278), UDim2.new(0.5, -16, 0, 30)
+)
+local removeBinding = createMenuControl(
+    "TextButton", "Remove bind", UDim2.new(0.5, 4, 0, 278), UDim2.new(0.5, -16, 0, 30)
+)
+local keybindStatus = createMenuControl(
+    "TextLabel", "Select a command", UDim2.fromOffset(12, 314), UDim2.new(1, -24, 0, 28)
+)
+keybindStatus.BackgroundTransparency = 1
+keybindStatus.TextXAlignment = Enum.TextXAlignment.Left
+keybindStatus.TextTruncate = Enum.TextTruncate.AtEnd
+
+local currentBinds = Instance.new("Frame")
+currentBinds.Name = "CurrentBinds"
+currentBinds.Position = UDim2.new(0.68, 5, 0, 0)
+currentBinds.Size = UDim2.new(0.32, -5, 1, 0)
+currentBinds.BackgroundColor3 = KeybindMenu.BackgroundColor3
+currentBinds.BorderSizePixel = 0
+currentBinds.ZIndex = 10
+currentBinds.Parent = KeybindPanels
+menuCorner:Clone().Parent = currentBinds
+
+local currentBindsTitle = menuTitle:Clone()
+currentBindsTitle.Text = "Current binds"
+currentBindsTitle.Size = UDim2.new(1, -24, 0, 28)
+currentBindsTitle.TextSize = 14
+currentBindsTitle.Parent = currentBinds
+
+local currentBindsList = keybindList:Clone()
+currentBindsList.Name = "List"
+currentBindsList.Position = UDim2.fromOffset(12, 44)
+currentBindsList.Size = UDim2.new(1, -24, 1, -56)
+currentBindsList.Parent = currentBinds
+
+local emptyBinds = keybindStatus:Clone()
+emptyBinds.Text = "  No binds yet"
+emptyBinds.Position = UDim2.fromOffset(0, 0)
+emptyBinds.Size = UDim2.new(1, -6, 0, 28)
+emptyBinds.Parent = currentBindsList
+
+local selectedCommand
+local capturingKey = false
+local keybindRows = {}
+
+local function refreshCurrentBinds()
+    for _, child in ipairs(currentBindsList:GetChildren()) do
+        if child:IsA("TextLabel") and child ~= emptyBinds then
+            child:Destroy()
+        end
+    end
+
+    emptyBinds.Visible = next(CommandBindings) == nil
+    for index, command in ipairs(CommandEntries) do
+        local key = command.boundKey
+        if key then
+            local row = emptyBinds:Clone()
+            row.LayoutOrder = index
+            row.Text = "  " .. key.Name .. "  " .. command.names[1]
+            row.Visible = true
+            row.Parent = currentBindsList
+        end
+    end
+end
+
+local function refreshKeybindRows()
+    local query = searchCommands.Text:lower():match("^%s*(.-)%s*$")
+    for _, row in ipairs(keybindRows) do
+        local command = row.command
+        local key = command.boundKey
+        row.button.Visible = row.searchText:find(query, 1, true) ~= nil
+        row.button.Text = "  " .. command.usage .. (key and "  [" .. key.Name .. "]" or "")
+        row.button.BackgroundColor3 = command == selectedCommand
+            and Color3.fromRGB(91, 49, 57)
+            or Color3.fromRGB(36, 36, 42)
+    end
+end
+
+local function setKeybindMenuVisible(visible)
+    capturingKey = false
+    if not visible then
+        searchCommands:ReleaseFocus()
+        keybindArguments:ReleaseFocus()
+    end
+    KeybindPanels.Visible = visible
+    keybindStatus.Text = selectedCommand and selectedCommand.usage or "Select a command"
+end
+
+registerCommand(
+    {"keybinds"},
+    "keybinds",
+    "Opens or closes the command keybind menu",
+    function()
+        setKeybindMenuVisible(not KeybindPanels.Visible)
+    end
+)
+
+for index, command in ipairs(CommandEntries) do
+    local button = Instance.new("TextButton")
+    button.LayoutOrder = index
+    button.Size = UDim2.new(1, -6, 0, 28)
+    button.BorderSizePixel = 0
+    button.TextColor3 = Color3.fromRGB(235, 235, 240)
+    button.TextXAlignment = Enum.TextXAlignment.Left
+    button.TextTruncate = Enum.TextTruncate.AtEnd
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 13
+    button.ZIndex = 12
+    button.Parent = keybindList
+
+    table.insert(keybindRows, {
+        button = button,
+        command = command,
+        searchText = (command.usage .. " " .. command.description .. " " .. table.concat(command.names, " ")):lower(),
+    })
+
+    button.Activated:Connect(function()
+        selectedCommand = command
+        capturingKey = false
+        local binding = command.boundKey and CommandBindings[command.boundKey]
+        keybindArguments.Text = binding and binding.arguments or ""
+        keybindStatus.Text = command.usage
+        refreshKeybindRows()
+    end)
+end
+
+refreshKeybindRows()
+
+searchCommands:GetPropertyChangedSignal("Text"):Connect(function()
+    capturingKey = false
+    keybindList.CanvasPosition = Vector2.zero
+    refreshKeybindRows()
+end)
+searchCommands.Focused:Connect(function()
+    capturingKey = false
+    keybindStatus.Text = selectedCommand and selectedCommand.usage or "Select a command"
+end)
+keybindArguments.Focused:Connect(function()
+    capturingKey = false
+    keybindStatus.Text = selectedCommand and selectedCommand.usage or "Select a command"
+end)
+closeMenu.Activated:Connect(function()
+    setKeybindMenuVisible(false)
+end)
+bindKey.Activated:Connect(function()
+    if not selectedCommand then
+        keybindStatus.Text = "Select a command first."
+        return
+    end
+
+    searchCommands:ReleaseFocus()
+    keybindArguments:ReleaseFocus()
+    capturingKey = true
+    keybindStatus.Text = "Press a key. Esc cancels."
+end)
+removeBinding.Activated:Connect(function()
+    capturingKey = false
+    if not selectedCommand or not selectedCommand.boundKey then
+        keybindStatus.Text = "Select a bound command."
+        return
+    end
+
+    CommandBindings[selectedCommand.boundKey] = nil
+    selectedCommand.boundKey = nil
+    keybindStatus.Text = "Binding removed."
+    refreshKeybindRows()
+    refreshCurrentBinds()
+end)
+
+local function captureCommandKey(key)
+    if key == Enum.KeyCode.Escape then
+        capturingKey = false
+        keybindStatus.Text = "Binding canceled."
+        return
+    end
+    if key == ToggleKey or key == Enum.KeyCode.Unknown then
+        keybindStatus.Text = "Choose another key. Esc cancels."
+        return
+    end
+
+    local existing = CommandBindings[key]
+    if existing and existing.command ~= selectedCommand then
+        keybindStatus.Text = key.Name .. " is bound to " .. existing.command.names[1] .. ". Choose another key."
+        return
+    end
+
+    if selectedCommand.boundKey then
+        CommandBindings[selectedCommand.boundKey] = nil
+    end
+
+    local arguments = keybindArguments.Text:match("^%s*(.-)%s*$")
+    CommandBindings[key] = { command = selectedCommand, arguments = arguments }
+    selectedCommand.boundKey = key
+    capturingKey = false
+    keybindStatus.Text = selectedCommand.names[1] .. " bound to " .. key.Name .. "."
+    refreshKeybindRows()
+    refreshCurrentBinds()
+end
+
+local function executeCommand(text, fromKeybind)
     local arguments = {}
 
     for word in text:gmatch("%S+") do
@@ -2135,26 +2427,42 @@ local function executeCommand(text)
     end
 
     if typeof(result) == "string" and result ~= "" then
-        showMessage(result)
+        if fromKeybind then
+            sendNotification(commandName, result, 3)
+        else
+            showMessage(result)
+        end
     else
         Box.Text = ""
     end
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        MovementKeys[input.KeyCode] = true
-    end
-
-    if input.KeyCode ~= ToggleKey then
+local commandInput = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then
         return
     end
 
-    if gameProcessed and not Box:IsFocused() then
+    local key = input.KeyCode
+    local focusedBox = UserInputService:GetFocusedTextBox()
+    if capturingKey and not focusedBox then
+        captureCommandKey(key)
         return
     end
 
-    setOpen(not CommandBarOpen)
+    local alreadyDown = MovementKeys[key]
+    MovementKeys[key] = true
+
+    if key == ToggleKey then
+        if (not focusedBox and not gameProcessed) or Box:IsFocused() then
+            setOpen(not CommandBarOpen)
+        end
+        return
+    end
+
+    local binding = CommandBindings[key]
+    if binding and not alreadyDown and not focusedBox and not gameProcessed and not CommandBarOpen then
+        executeCommand(binding.command.names[1] .. " " .. binding.arguments, true)
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
@@ -2164,14 +2472,18 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 Box.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        local text = Box.Text
-        Box.Text = ""
-        executeCommand(text)
+    if not enterPressed or not CommandBarOpen then
+        return
     end
+
+    local text = Box.Text
+    setOpen(false)
+    executeCommand(text)
 end)
 
 ScreenGui.Destroying:Connect(function()
+    commandInput:Disconnect()
+
     if FreecamEnabled then
         disableFreecam()
     end
