@@ -993,7 +993,7 @@ RunService:BindToRenderStep(
 
 local NoclipEnabled = false
 local NoclipOriginalStates = {}
-local FlyEnabled = false
+local FlyMode
 local FlySpeed = 70
 local FlyBodyVelocity = nil
 local FlyBodyGyro = nil
@@ -1076,7 +1076,8 @@ RunService.Stepped:Connect(function()
 end)
 
 local function stopFly()
-    FlyEnabled = false
+    local previousMode = FlyMode
+    FlyMode = nil
 
     if FlyBodyVelocity then
         FlyBodyVelocity:Destroy()
@@ -1091,12 +1092,12 @@ local function stopFly()
     local humanoid = LocalPlayer.Character
         and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
 
-    if humanoid then
+    if humanoid and previousMode == "physics" then
         humanoid.PlatformStand = false
     end
 end
 
-local function startFly()
+local function startFly(mode)
     local root = getRootPart()
     local humanoid = getHumanoid()
 
@@ -1119,69 +1120,105 @@ local function startFly()
     FlyBodyGyro.CFrame = root.CFrame
     FlyBodyGyro.Parent = root
 
-    humanoid.PlatformStand = true
-    FlyEnabled = true
+    if mode == "physics" then
+        humanoid.PlatformStand = true
+    end
+    FlyMode = mode
     return true
+end
+
+local function updateFlight(deltaTime)
+    if not FlyMode then
+        return
+    end
+
+    local character = LocalPlayer.Character
+    local root = character and (character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart)
+
+    if not root or not FlyBodyVelocity or not FlyBodyGyro then
+        stopFly()
+        return
+    end
+    if FlyBodyVelocity.Parent ~= root or FlyBodyGyro.Parent ~= root then
+        return
+    end
+
+    Camera = workspace.CurrentCamera
+    if not Camera then
+        return
+    end
+
+    local direction = Vector3.zero
+    local isDown = function(key)
+        if FlyMode == "cframe" then
+            return not CommandBarOpen
+                and not UserInputService:GetFocusedTextBox()
+                and UserInputService:IsKeyDown(key)
+        end
+        return MovementKeys[key]
+    end
+
+    if isDown(Enum.KeyCode.W) then
+        direction += Camera.CFrame.LookVector
+    end
+
+    if isDown(Enum.KeyCode.S) then
+        direction -= Camera.CFrame.LookVector
+    end
+
+    if isDown(Enum.KeyCode.A) then
+        direction -= Camera.CFrame.RightVector
+    end
+
+    if isDown(Enum.KeyCode.D) then
+        direction += Camera.CFrame.RightVector
+    end
+
+    if isDown(Enum.KeyCode.E) or isDown(Enum.KeyCode.Space) then
+        direction += Vector3.yAxis
+    end
+
+    if isDown(Enum.KeyCode.Q)
+        or isDown(Enum.KeyCode.LeftControl)
+        or isDown(Enum.KeyCode.RightControl) then
+        direction -= Vector3.yAxis
+    end
+
+    if direction.Magnitude > 0 then
+        direction = direction.Unit
+    end
+
+    if FlyMode == "cframe" then
+        local position = root.Position + direction * FlySpeed * deltaTime
+        local look = Camera.CFrame.LookVector
+        local heading = Vector3.new(look.X, 0, look.Z)
+        if heading.Magnitude > 0.001 then
+            FlyBodyGyro.CFrame = CFrame.lookAlong(position, heading)
+        end
+        local targetRoot = CFrame.new(position) * FlyBodyGyro.CFrame.Rotation
+        local rootToPivot = root.CFrame:ToObjectSpace(character:GetPivot())
+        character:PivotTo(targetRoot * rootToPivot)
+    else
+        FlyBodyVelocity.Velocity = direction * FlySpeed
+        FlyBodyGyro.CFrame = CFrame.lookAlong(root.Position, Camera.CFrame.LookVector)
+    end
 end
 
 RunService:BindToRenderStep(
     "ClientAdminFly",
     Enum.RenderPriority.Character.Value + 1,
-    function()
-        if not FlyEnabled then
-            return
+    function(deltaTime)
+        if FlyMode == "physics" then
+            updateFlight(deltaTime)
         end
-
-        local root = LocalPlayer.Character
-            and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-        if not root or not FlyBodyVelocity or not FlyBodyGyro then
-            stopFly()
-            return
-        end
-
-        Camera = workspace.CurrentCamera
-
-        local direction = Vector3.zero
-
-        if MovementKeys[Enum.KeyCode.W] then
-            direction += Camera.CFrame.LookVector
-        end
-
-        if MovementKeys[Enum.KeyCode.S] then
-            direction -= Camera.CFrame.LookVector
-        end
-
-        if MovementKeys[Enum.KeyCode.A] then
-            direction -= Camera.CFrame.RightVector
-        end
-
-        if MovementKeys[Enum.KeyCode.D] then
-            direction += Camera.CFrame.RightVector
-        end
-
-        if MovementKeys[Enum.KeyCode.E]
-        or MovementKeys[Enum.KeyCode.Space] then
-            direction += Vector3.yAxis
-        end
-
-        if MovementKeys[Enum.KeyCode.Q]
-        or MovementKeys[Enum.KeyCode.LeftControl]
-        or MovementKeys[Enum.KeyCode.RightControl] then
-            direction -= Vector3.yAxis
-        end
-
-        if direction.Magnitude > 0 then
-            direction = direction.Unit
-        end
-
-        FlyBodyVelocity.Velocity = direction * FlySpeed
-        FlyBodyGyro.CFrame = CFrame.lookAt(
-            root.Position,
-            root.Position + Camera.CFrame.LookVector
-        )
     end
 )
+
+local cframeFlightStep = RunService.PreSimulation:Connect(function(deltaTime)
+    if FlyMode == "cframe" then
+        updateFlight(deltaTime)
+    end
+end)
 
 local function stopSpin()
     SpinEnabled = false
@@ -1268,8 +1305,13 @@ LocalPlayer.CharacterAdded:Connect(function()
         setHeadless(true)
     end
 
-    if FlyEnabled then
-        task.defer(startFly)
+    if FlyMode then
+        local mode = FlyMode
+        task.defer(function()
+            if FlyMode == mode then
+                startFly(mode)
+            end
+        end)
     end
 end)
 
@@ -1674,16 +1716,79 @@ registerCommand(
     "fly",
     "Toggles client-side flight",
     function()
-        if FlyEnabled then
+        if FlyMode == "physics" then
             stopFly()
             return "Fly disabled"
         end
 
-        if startFly() then
+        if startFly("physics") then
             return "Fly enabled"
         end
 
         return "Character not loaded."
+    end
+)
+
+registerCommand(
+    {"cfly"},
+    "cfly",
+    "Toggles CFrame-based flight",
+    function()
+        if FlyMode == "cframe" then
+            stopFly()
+            return "CFrame fly disabled"
+        end
+
+        if startFly("cframe") then
+            return "CFrame fly enabled"
+        end
+
+        return "Character not loaded."
+    end
+)
+
+local characterLight
+
+registerCommand(
+    {"light"},
+    "light (0.01-100)",
+    "Creates or updates a PointLight on your character root",
+    function(arguments)
+        local brightness = tonumber(arguments[1])
+        if not brightness or not (brightness >= 0.01 and brightness <= 100) then
+            return "Usage: light (0.01-100)"
+        end
+
+        local character = LocalPlayer.Character
+        local root = character and (character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart)
+        if not root then
+            return "Character root not loaded."
+        end
+
+        if not characterLight or characterLight.Parent ~= root then
+            characterLight = Instance.new("PointLight")
+            characterLight.Name = "ClientAdminPointLight"
+            characterLight.Parent = root
+        end
+
+        characterLight.Brightness = brightness
+        return "Light brightness set to " .. tostring(brightness)
+    end
+)
+
+registerCommand(
+    {"nolight", "unlight"},
+    "nolight / unlight",
+    "Removes the PointLight created by light",
+    function()
+        if not characterLight or not characterLight.Parent then
+            characterLight = nil
+            return "No light to remove."
+        end
+
+        characterLight:Destroy()
+        characterLight = nil
+        return "Light removed."
     end
 )
 
@@ -2492,6 +2597,7 @@ end)
 
 ScreenGui.Destroying:Connect(function()
     commandInput:Disconnect()
+    cframeFlightStep:Disconnect()
 
     if FreecamEnabled then
         disableFreecam()
