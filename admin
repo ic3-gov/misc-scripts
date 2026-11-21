@@ -2218,6 +2218,65 @@ registerCommand(
     end
 )
 
+
+registerCommand(
+    {"goto", "tp"},
+    "goto / tp (player)",
+    "Teleports your character next to another player",
+    function(arguments)
+        if #arguments == 0 then
+            return "Usage: goto (player)"
+        end
+
+        local target = findPlayerByText(table.concat(arguments, " "))
+        if not target or target == LocalPlayer then
+            return "Choose another player."
+        end
+
+        local character = LocalPlayer.Character
+        local root = character and (character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart)
+        local targetCharacter = target.Character
+        local targetRoot = targetCharacter
+            and (targetCharacter:FindFirstChild("HumanoidRootPart") or targetCharacter.PrimaryPart)
+
+        if not root or not targetRoot or not targetRoot:IsDescendantOf(workspace) then
+            return "Both characters must be loaded."
+        end
+
+        local destination = targetRoot.CFrame * CFrame.new(4, 0, 0)
+        character:PivotTo(destination * root.CFrame:ToObjectSpace(character:GetPivot()))
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        return "Teleported to " .. target.Name .. "."
+    end
+)
+
+registerCommand(
+    {"deleteplayer"},
+    "deleteplayer (username)",
+    "Removes another player's character from your local Workspace",
+    function(arguments)
+        if #arguments ~= 1 then
+            return "Usage: deleteplayer (username)"
+        end
+
+        local username = arguments[1]:lower()
+        for _, target in ipairs(Players:GetPlayers()) do
+            if target ~= LocalPlayer and target.Name:lower() == username then
+                local character = target.Character
+                if not character or not character:IsDescendantOf(workspace) then
+                    return "That player's character is not loaded."
+                end
+
+                character:Destroy()
+                return "Removed " .. target.Name .. "'s character locally."
+            end
+        end
+
+        return "Enter another player's full username."
+    end
+)
+
 -- Command keybinds
 local KeybindPanels = Instance.new("Frame")
 KeybindPanels.Name = "KeybindPanels"
