@@ -10,6 +10,7 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local ViewingPlayer = nil
 local PreviousCameraSubject = nil
+local savedPositions = {}
 
 pcall(function()
     local oldGui = CoreGui:FindFirstChild("ClientAdmin")
@@ -2274,6 +2275,55 @@ registerCommand(
         end
 
         return "Enter another player's full username."
+    end
+)
+
+registerCommand(
+    {"savepos"},
+    "savepos (name)",
+    "Saves your current position under a name",
+    function(arguments)
+        if #arguments == 0 then
+            return "Usage: savepos (name)"
+        end
+
+        local character = LocalPlayer.Character
+        local root = character and (character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart)
+        if not root then
+            return "Character root not loaded."
+        end
+
+        local name = table.concat(arguments, " ")
+        savedPositions[name:lower()] = root.CFrame
+        return "Saved position " .. name .. "."
+    end
+)
+
+registerCommand(
+    {"tppos"},
+    "tppos (name)",
+    "Teleports to a saved position",
+    function(arguments)
+        if #arguments == 0 then
+            return "Usage: tppos (name)"
+        end
+
+        local name = table.concat(arguments, " ")
+        local destination = savedPositions[name:lower()]
+        if not destination then
+            return "No saved position named " .. name .. "."
+        end
+
+        local character = LocalPlayer.Character
+        local root = character and (character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart)
+        if not root then
+            return "Character root not loaded."
+        end
+
+        character:PivotTo(destination * root.CFrame:ToObjectSpace(character:GetPivot()))
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        return "Teleported to " .. name .. "."
     end
 )
 
